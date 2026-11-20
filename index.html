@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Bull Play</title>
+<title>UZB cash bot</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{--bg:#0a1315;--card:rgba(255,255,255,.055);--line:rgba(255,255,255,.13);--text:#eef6f4;--muted:#8fa6a1;--acc:#3ee6c0;--acc2:#1fb897;--red:#ff6b7d;--warn:#ffcf5c}
@@ -98,8 +98,115 @@ body.imm #nav{display:none}
 .srow label{flex:1;font-size:14px}.srow label small{display:block;color:var(--muted);font-size:11px}
 .srow input{width:110px;text-align:right}
 </style>
+<style id="fx-css">
+/* ====== UZB cash bot: to'liq yonib turuvchi animatsiyali dizayn ====== */
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+:root{--ease:cubic-bezier(.2,.8,.2,1)}
+html{background:#060f11}
+body{background:transparent}
+/* --- jonli fon: suzuvchi nur dog'lari va uchqunlar --- */
+#fx{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:radial-gradient(120% 60% at 50% -10%,#143a38 0,#0a1315 60%)}
+body.imm #fx{display:none}
+#fx i{position:absolute;border-radius:50%;filter:blur(64px);will-change:transform}
+#fx i:nth-child(1){width:380px;height:380px;left:-140px;top:-80px;background:#1fb897;opacity:.5;animation:dr1 13s ease-in-out infinite alternate}
+#fx i:nth-child(2){width:320px;height:320px;right:-130px;top:34%;background:#2a6fff;opacity:.22;animation:dr2 17s ease-in-out infinite alternate}
+#fx i:nth-child(3){width:340px;height:340px;left:8%;bottom:-150px;background:#3ee6c0;opacity:.3;animation:dr3 15s ease-in-out infinite alternate}
+#fx b{position:absolute;bottom:-12px;width:4px;height:4px;border-radius:50%;background:#7ff5da;box-shadow:0 0 10px #3ee6c0;opacity:0;animation:spark var(--t,12s) linear var(--w,0s) infinite}
+@keyframes dr1{to{transform:translate(120px,90px) scale(1.15)}}
+@keyframes dr2{to{transform:translate(-110px,-80px) scale(1.2)}}
+@keyframes dr3{to{transform:translate(110px,-70px) scale(1.1)}}
+@keyframes spark{0%{transform:translateY(0) scale(.6);opacity:0}12%{opacity:.85}85%{opacity:.5}100%{transform:translateY(-108vh) scale(1.2);opacity:0}}
+/* --- shisha kartalar: aylanuvchi yorqin hoshiya + nafas oluvchi nur --- */
+.glass{position:relative;isolation:isolate}
+.glass::before{content:"";position:absolute;inset:-1.5px;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:2;
+  background:conic-gradient(from var(--a),transparent 0 58%,rgba(62,230,192,.15) 66%,rgba(62,230,192,.95) 84%,#c9fff4 89%,transparent 95%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+  animation:spin 6.5s linear var(--d,0s) infinite}
+.glass::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;box-shadow:0 0 30px 2px rgba(62,230,192,.28),inset 0 0 24px rgba(62,230,192,.07);opacity:.15;animation:breathe 4.6s ease-in-out var(--d,0s) infinite}
+@keyframes spin{to{--a:360deg}}
+@keyframes breathe{0%,100%{opacity:.12}50%{opacity:.95}}
+.glint{position:absolute;left:8%;bottom:-1px;width:92px;height:2px;border-radius:2px;z-index:3;pointer-events:none;background:linear-gradient(90deg,transparent,#8ff8e0,transparent);filter:drop-shadow(0 0 6px #3ee6c0);animation:glint 5s ease-in-out infinite alternate}
+@keyframes glint{from{left:6%}to{left:64%}}
+/* --- tugmalar, belgilar, rasm --- */
+.btn{position:relative;overflow:hidden;transition:transform .15s}
+.btn.p{box-shadow:0 0 22px rgba(62,230,192,.4);animation:btnglow 2.8s ease-in-out infinite}
+.btn.p::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-18deg);animation:shine 3.4s ease-in-out infinite}
+@keyframes btnglow{50%{box-shadow:0 0 34px rgba(62,230,192,.65)}}
+@keyframes shine{0%,55%{left:-60%}100%{left:130%}}
+.seg button{transition:background .3s,color .3s,box-shadow .3s}
+.seg button.on,.tabs button.on{box-shadow:0 0 18px rgba(62,230,192,.55)}
+.tabs button{transition:background .3s,color .3s,box-shadow .3s}
+.pill.g{animation:pillglow 2.6s ease-in-out infinite}
+@keyframes pillglow{50%{box-shadow:0 0 18px rgba(62,230,192,.45);border-color:rgba(62,230,192,.8)}}
+.ava{animation:avapulse 3.2s ease-in-out infinite}
+@keyframes avapulse{0%,100%{box-shadow:0 0 0 0 rgba(62,230,192,.5)}50%{box-shadow:0 0 0 7px rgba(62,230,192,0),0 0 20px rgba(62,230,192,.55)}}
+.ib{transition:transform .15s}.ib:active{transform:scale(.9)}
+.big{text-shadow:0 0 26px rgba(62,230,192,.35)}
+.bar i{background-size:200% 100%;background-image:linear-gradient(90deg,#2fcfae,#b8fff0,#2fcfae);animation:barflow 2.4s linear infinite;box-shadow:0 0 14px rgba(62,230,192,.7)}
+@keyframes barflow{to{background-position:-200% 0}}
+.gc{transition:transform .2s var(--ease)}.gc:active{transform:scale(.96)}
+.imgw{position:relative;border-radius:18px;overflow:hidden}
+.imgw img{animation:float 5.5s ease-in-out infinite;transform-origin:center}
+.imgw::after{content:"";position:absolute;top:0;bottom:0;left:-70%;width:45%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg);animation:shine 4.2s ease-in-out 1s infinite;pointer-events:none}
+@keyframes float{50%{transform:scale(1.07)}}
+.gc span{text-shadow:0 0 12px rgba(62,230,192,.6)}
+.hrow .ic,.task .ic{box-shadow:0 0 14px rgba(62,230,192,.18)}
+.a.p{text-shadow:0 0 12px rgba(62,230,192,.5)}
+.chip{animation:pillglow 3s ease-in-out infinite}
+.empty{animation:fadepulse 1.4s ease-in-out infinite}
+@keyframes fadepulse{50%{opacity:.45}}
+.linkbox{box-shadow:inset 0 0 18px rgba(62,230,192,.08)}
+.field:focus{box-shadow:0 0 0 3px rgba(62,230,192,.18),0 0 22px rgba(62,230,192,.25)}
+/* --- grafik --- */
+.chart .ln{stroke-dasharray:1;stroke-dashoffset:0}
+.pg.in .chart .ln{animation:draw 1.4s .3s var(--ease) backwards}
+.pg.in .chart .ar{animation:fadein 1s .7s ease backwards}
+.chart .pulse{fill:none;stroke:#3ee6c0;stroke-width:2;transform-box:fill-box;transform-origin:center;animation:ping 2.2s ease-out infinite}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes ping{0%{transform:scale(.7);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+/* --- sahifalar orasidagi o'tish (videodagidek: eskisi siljib so'nadi, yangisi yonib kiradi) --- */
+.pg{--dx:46px}
+.pg.in{animation:pgin .5s var(--ease) backwards}
+.pg.in>*{animation:rise .6s var(--ease) calc(var(--i,0)*55ms + 70ms) backwards}
+.pg.data>*{animation:fadein .35s ease backwards}
+.pg-out{animation:pgout .17s ease-in forwards;pointer-events:none}
+@keyframes pgin{from{opacity:0;transform:translateX(calc(var(--dx)*var(--dir,1)));filter:blur(6px)}}
+@keyframes pgout{to{opacity:0;transform:translateX(calc(var(--dx)*var(--dir,1)*-.7)) scale(.985);filter:blur(4px)}}
+@keyframes rise{from{opacity:0;transform:translateY(24px) scale(.965)}}
+@keyframes fadein{from{opacity:0}}
+/* --- pastki menyu: sirpanuvchi yonib turuvchi tabletka --- */
+#nav .in{position:relative;gap:0;animation:navglow 4.5s ease-in-out infinite}
+@keyframes navglow{50%{box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 30px rgba(62,230,192,.22)}}
+#nav .in::before{content:"";position:absolute;left:12%;right:12%;bottom:-7px;height:6px;border-radius:0 0 30px 30px;background:linear-gradient(145deg,rgba(30,50,50,.8),rgba(10,20,22,.8));border:1.5px solid rgba(255,255,255,.12);border-top:0;z-index:-1}
+#nav .pillbg{position:absolute;top:7px;bottom:7px;left:7px;width:calc((100% - 14px)/4);border-radius:28px;pointer-events:none;overflow:hidden;
+  background:linear-gradient(145deg,rgba(62,230,192,.3),rgba(62,230,192,.08));border:1.5px solid rgba(62,230,192,.6);
+  box-shadow:0 0 24px rgba(62,230,192,.4),inset 0 0 16px rgba(62,230,192,.18);
+  transform:translateX(calc(var(--idx,0)*100%));transition:transform .55s cubic-bezier(.34,1.4,.5,1),opacity .35s}
+#nav .pillbg::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg);animation:shine 3.2s ease-in-out infinite}
+#nav.off .pillbg{opacity:0}
+#nav button{position:relative;z-index:1;border:1.5px solid transparent;transition:color .3s,transform .15s}
+#nav button:active{transform:scale(.92)}
+#nav button.on{background:none;border-color:transparent;text-shadow:0 0 12px rgba(62,230,192,.7)}
+#nav button svg{transition:transform .4s cubic-bezier(.34,1.6,.5,1),filter .3s}
+#nav button.on svg{transform:translateY(-2px) scale(1.12);filter:drop-shadow(0 0 7px rgba(62,230,192,.8))}
+/* --- toast, o'yin oynasi --- */
+#toast{box-shadow:0 0 24px rgba(62,230,192,.25);animation:toastin .35s var(--ease)}
+@keyframes toastin{from{opacity:0;transform:translate(-50%,-18px) scale(.95)}}
+.game{animation:gamein .45s var(--ease)}
+@keyframes gamein{from{opacity:0;transform:scale(1.06);filter:blur(8px)}}
+.gov.show .gcard{animation:pop .5s cubic-bezier(.3,1.5,.5,1)}
+@keyframes pop{from{opacity:0;transform:scale(.8) translateY(20px)}}
+/* --- admin: rasm ko'rinishi --- */
+.prev{width:100%;aspect-ratio:1;border-radius:16px;object-fit:cover;display:block;background:rgba(0,0,0,.35);border:1.5px solid var(--line)}
+.prevw{width:104px;flex:none}
+.prev.wide{aspect-ratio:auto;max-height:230px;object-fit:contain}
+.arow{display:flex;gap:12px;align-items:center}
+.field[type=file]{padding:9px 10px;font-size:13px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
 </head>
 <body>
+<div id="fx"><i></i><i></i><i></i></div>
 <div id="app"></div>
 <div id="nav"><div class="in"></div></div>
 <div id="toast"></div>
@@ -657,7 +764,7 @@ addEventListener('message',e=>{
   if(m.type==='safe'){const r=document.documentElement.style;r.setProperty('--st',(m.top||0)+'px');r.setProperty('--sb',(m.bottom||0)+'px')}
   else if(m.type==='start')startRound(m);
 });
-$('bk').onclick=()=>sendUp({type:'exit'});
+$('bk').onclick=()=>sendUp(playing?{type:'exit',peak:Math.round(best*10),kills:me.kills}:{type:'exit'});
 pl.slice(1).forEach(spawn);
 let last=performance.now(),hT=0;
 function loop(t){
@@ -959,7 +1066,7 @@ const legend='<div class="coins"><span><i style="background:#4de3ff;color:#4de3f
 function topHtml(){return top.length?'<div class="top"><b>🏆 Reyting</b>'+top.slice(0,5).map((r,i)=>`<div class="${r.me?'me':''}"><span>${i+1}. ${String(r.name).replace(/[<>&]/g,'')}</span><b>${(r.best/10).toFixed(1)}</b></div>`).join('')+'</div>':''}
 function menu(){
   state='menu';$('joy').classList.remove('on');
-  card.innerHTML=`<div class="logo">BULL <span>slither</span></div><div class="s">15 daqiqalik jang. Yarqiroq coinlarni yeb o‘sing — ko‘pi 0.01, kami 0.05 va 0.1. Zona toraya boradi: ichida ochkongiz o‘sib boradi, tashqarisida kamayadi. Faqat boshqa ilon tanasiga urilsangiz yoki ochko tugasa yutqazasiz. Joystik bilan boshqaring.</div>${legend}<button class="cb" id="go">O‘ynash</button>${mine.best?`<div class="s">Rekordingiz: <b>${(mine.best/10).toFixed(1)}</b></div>`:''}${topHtml()}<button class="cb g" id="ex">← Orqaga</button>`;
+  card.innerHTML=`<div class="logo">BULL <span>slither</span></div><div class="s">15 daqiqalik jang. Yarqiroq coinlarni yeb o‘sing — ko‘pi 0.01, kami 0.05 va 0.1. Zona toraya boradi: ichida ochkongiz o‘sib boradi, tashqarisida kamayadi. Faqat boshqa ilon tanasiga urilsangiz yoki ochko tugasa yutqazasiz. Joystik bilan boshqaring. Yig‘gan ochkolaringiz coinga, coin esa so‘mga aylanadi.</div>${legend}<button class="cb" id="go">O‘ynash</button>${mine.best?`<div class="s">Rekordingiz: <b>${(mine.best/10).toFixed(1)}</b></div>`:''}${topHtml()}<button class="cb g" id="ex">← Orqaga</button>`;
   $('ov').classList.remove('h');$('go').onclick=begin;$('ex').onclick=()=>sendUp({type:'exit'});
 }
 function over(){
@@ -1016,7 +1123,7 @@ addEventListener('pointermove',e=>{
   const dx=e.clientX-W/2,dy=e.clientY-H/2;if(Math.hypot(dx,dy)>24){aim=Math.atan2(dy,dx);jpad(dx*.3,dy*.3)}
 });
 addEventListener('contextmenu',e=>e.preventDefault());
-$('bk').onclick=()=>sendUp({type:'exit'});
+$('bk').onclick=()=>sendUp(state==='play'?{type:'exit',score:Math.round(peak*10)}:{type:'exit'});
 /* ---- ota ilova bilan aloqa ---- */
 addEventListener('message',e=>{
   const m=e.data;if(!m||typeof m!=='object')return;
@@ -1073,6 +1180,30 @@ sendUp({type:'ready'});
   var toastT = 0;
   function toast(t) { var e = document.getElementById("toast"); e.textContent = t; e.style.display = "block"; clearTimeout(toastT); toastT = setTimeout(function () { e.style.display = "none"; }, 2600); }
   function haptic() { try { tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred("light"); } catch (e) {} }
+  function countUp(el, to, from) {
+    if (from == null || from === to) { el.textContent = fmt(to); return; }
+    el.textContent = fmt(from);
+    var t0 = performance.now(), dur = 1000;
+    requestAnimationFrame(function step(t) {
+      var p = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(from + (to - from) * e);
+      if (p < 1 && el.isConnected) requestAnimationFrame(step);
+      else if (p < 1) el.textContent = fmt(to);
+    });
+  }
+  function initFx() {
+    var f = document.getElementById("fx");
+    for (var i = 0; i < 14; i++) {
+      var b = document.createElement("b");
+      b.style.left = (Math.random() * 100).toFixed(1) + "%";
+      b.style.setProperty("--t", (9 + Math.random() * 9).toFixed(1) + "s");
+      b.style.setProperty("--w", (-Math.random() * 14).toFixed(1) + "s");
+      f.appendChild(b);
+    }
+  }
+  function decorate(root) {
+    [].forEach.call(root.querySelectorAll(".glass"), function (e) { e.style.setProperty("--d", (-Math.random() * 6).toFixed(2) + "s"); });
+  }
   function api(path, data) {
     data = Object.assign({ init_data: (tg && tg.initData) || "" }, data || {});
     return fetch("/api/" + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
@@ -1093,14 +1224,14 @@ sendUp({type:'ready'});
   };
 
   /* ---------- holat ---------- */
-  var S = { me: null, tab: "home", days: 7, bonus: null, hist: null, hflt: "all", wds: null, view: null, adm: { tab: "stat" }, busy: false };
+  var S = { me: null, tab: "home", dir: 1, swapT: 0, shown: null, days: 7, bonus: null, hist: null, hflt: "all", wds: null, view: null, adm: { tab: "stat" }, busy: false };
   var app = document.getElementById("app"), nav = document.querySelector("#nav .in");
 
   function applyBalance(b) { if (S.me) S.me.user.balance = b; }
 
   /* ---------- yuklash ---------- */
-  function load() {
-    return api("me", { days: S.days }).then(function (d) { S.me = d; render(); }).catch(function (e) {
+  function load(mode) {
+    return api("me", { days: S.days }).then(function (d) { S.me = d; render(mode || "enter"); }).catch(function (e) {
       app.textContent = "";
       app.appendChild(h("div", { class: "empty" }, e.code === "auth" || !inTG && !DEV ? "Iltimos, Telegram bot orqali oching." : e.message));
     });
@@ -1108,29 +1239,60 @@ sendUp({type:'ready'});
 
   /* ---------- navigatsiya ---------- */
   var TABS = [["home", "Bosh", "home"], ["bonus", "Bonus", "gift"], ["withdraw", "Yechish", "wallet"], ["history", "Tarix", "hist"]];
+  var TAB_IDX = { home: 0, bonus: 1, withdraw: 2, history: 3 };
   function go(tab) {
+    var same = S.tab === tab && !S.view;
+    S.dir = S.view ? -1 : (TAB_IDX[tab] >= TAB_IDX[S.tab] ? 1 : -1);
     S.view = null; S.tab = tab; haptic();
     if (tab === "bonus") S.bonus = null;
     if (tab === "history") S.hist = null;
     if (tab === "withdraw") S.wds = null;
-    render(); window.scrollTo(0, 0);
+    render(same ? "data" : "enter");
+    if (same) window.scrollTo(0, 0);
   }
+  function openAdmin() { S.dir = 1; S.view = "admin"; render("enter"); }
+  function closeAdmin() { S.dir = -1; S.view = null; render("enter"); }
   function drawNav() {
-    nav.textContent = "";
-    TABS.forEach(function (t) { nav.appendChild(h("button", { class: S.tab === t[0] && !S.view ? "on" : "", onclick: function () { go(t[0]); }, html: IC[t[2]] + "<span>" + t[1] + "</span>" })); });
+    if (!nav.firstChild) {
+      nav.appendChild(h("div", { class: "pillbg" }));
+      TABS.forEach(function (t) { nav.appendChild(h("button", { "data-t": t[0], onclick: function () { go(t[0]); }, html: IC[t[2]] + "<span>" + t[1] + "</span>" })); });
+    }
+    var off = !!S.view;
+    nav.style.setProperty("--idx", TAB_IDX[S.tab] || 0);
+    nav.classList.toggle("off", off);
+    [].forEach.call(nav.querySelectorAll("button"), function (b) { b.classList.toggle("on", b.getAttribute("data-t") === S.tab && !off); });
   }
   function head(title, onBack) {
     return h("div", { class: "ptitle" }, h("button", { class: "ib glass", onclick: onBack || function () { go("home"); }, html: IC.back }), h("h1", null, title));
   }
-  function render() {
+  /* mode: "enter" — sahifa almashadi (eskisi siljib so'nadi, yangisi yonib kiradi); "data" — ma'lumot yuklandi (yumshoq paydo bo'ladi); bo'sh — jim yangilash */
+  function render(mode) {
     if (!S.me) return;
+    drawNav();
+    var old = app.firstElementChild;
+    if (mode === "enter" && old && !document.body.classList.contains("imm")) {
+      if (!S.swapT) {
+        old.style.setProperty("--dir", S.dir || 1); old.classList.add("pg-out");
+        S.swapT = setTimeout(function () { S.swapT = 0; paint("enter"); }, 170);
+      }
+      return;
+    }
+    if (S.swapT) return;            // almashish kutilmoqda — u eng so'nggi holatni chizadi
+    paint(mode);
+  }
+  function paint(mode) {
     document.body.classList.remove("imm");
     app.textContent = "";
     var v = S.view === "admin" ? viewAdmin() : S.tab === "home" ? viewHome() : S.tab === "bonus" ? viewBonus() : S.tab === "withdraw" ? viewWithdraw() : viewHistory();
-    app.appendChild(v); drawNav();
+    v.classList.add("pg");
+    if (mode === "enter") { v.classList.add("in"); v.style.setProperty("--dir", S.dir || 1); }
+    else if (mode === "data") v.classList.add("data");
+    [].forEach.call(v.children, function (c, i) { c.style.setProperty("--i", Math.min(i, 9)); });
+    app.appendChild(v); decorate(app);
+    if (mode === "enter") window.scrollTo(0, 0);
     try { if (tg && tg.BackButton) { if (S.view === "admin") tg.BackButton.show(); else tg.BackButton.hide(); } } catch (e) {}
   }
-  try { tg && tg.BackButton && tg.BackButton.onClick(function () { if (S.view === "admin") { S.view = null; render(); } }); } catch (e) {}
+  try { tg && tg.BackButton && tg.BackButton.onClick(function () { if (S.view === "admin") closeAdmin(); }); } catch (e) {}
 
   /* ---------- BOSH ---------- */
   function chartSvg(series) {
@@ -1138,10 +1300,16 @@ sendUp({type:'ready'});
     var top = Math.max(100, Math.ceil(mx / 100) * 100), pts = series.map(function (s, i) { return [pl + (W - pl - pr) * i / (series.length - 1), pt + (H - pt - pb) * (1 - s.earned / top)]; });
     var d = pts.map(function (p, i) { return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
     var last = pts[pts.length - 1];
-    var svg = '<svg class="chart" viewBox="0 0 ' + W + " " + (H + 22) + '"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#2fcfae"/><stop offset="1" stop-color="#7ff5da"/></linearGradient></defs>' +
+    var area = d + " L" + last[0].toFixed(1) + " " + (H - pb) + " L" + pts[0][0].toFixed(1) + " " + (H - pb) + " Z";
+    var svg = '<svg class="chart" viewBox="0 0 ' + W + " " + (H + 22) + '"><defs><linearGradient id="lg" gradientUnits="userSpaceOnUse" x1="' + pl + '" y1="0" x2="' + (W - pr) + '" y2="0"><stop offset="0" stop-color="#2fcfae"/><stop offset="1" stop-color="#7ff5da"/></linearGradient>' +
+      '<linearGradient id="la" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ee6c0" stop-opacity=".3"/><stop offset="1" stop-color="#3ee6c0" stop-opacity="0"/></linearGradient>' +
+      '<filter id="gl" filterUnits="userSpaceOnUse" x="0" y="0" width="' + W + '" height="' + (H + 22) + '"><feGaussianBlur stdDeviation="3.5"/></filter></defs>' +
       '<line x1="' + pl + '" x2="' + (W - pr + 10) + '" y1="' + pt + '" y2="' + pt + '" stroke="rgba(255,255,255,.1)"/><line x1="' + pl + '" x2="' + (W - pr + 10) + '" y1="' + (H / 2) + '" y2="' + (H / 2) + '" stroke="rgba(255,255,255,.1)"/>' +
       '<text x="' + (W) + '" y="' + (pt + 4) + '" fill="#8fa6a1" font-size="11" text-anchor="end">' + fmt(top) + '</text><text x="' + W + '" y="' + (H / 2 + 4) + '" fill="#8fa6a1" font-size="11" text-anchor="end">' + fmt(top / 2) + '</text>' +
-      '<path d="' + d + '" fill="none" stroke="url(#lg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path class="ar" d="' + area + '" fill="url(#la)"/>' +
+      '<path class="ln" pathLength="1" d="' + d + '" fill="none" stroke="#3ee6c0" stroke-opacity=".7" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>' +
+      '<path class="ln" pathLength="1" d="' + d + '" fill="none" stroke="url(#lg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle class="pulse" cx="' + last[0] + '" cy="' + last[1] + '" r="8"/>' +
       '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="8" fill="#0a1315" stroke="#3ee6c0" stroke-width="2.500"/><circle cx="' + last[0] + '" cy="' + last[1] + '" r="4" fill="#fff"/>' +
       '<text x="' + pl + '" y="' + (H + 16) + '" fill="#8fa6a1" font-size="11">' + series[0].day.slice(5).replace("-", "/") + '</text><text x="' + ((W - pr) / 2) + '" y="' + (H + 16) + '" fill="#8fa6a1" font-size="11" text-anchor="middle">' + series[Math.floor(series.length / 2)].day.slice(5).replace("-", "/") + '</text><text x="' + (W - pr + 10) + '" y="' + (H + 16) + '" fill="#8fa6a1" font-size="11" text-anchor="end">Bugun</text></svg>';
     return svg;
@@ -1150,26 +1318,33 @@ sendUp({type:'ready'});
     paperio: "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#edf1f8"/><g stroke="#3c5078" stroke-opacity=".12"><path d="M0 40h200M0 80h200M0 120h200M0 160h200M40 0v200M80 0v200M120 0v200M160 0v200"/></g><path d="M18 62h96v90H18z" fill="#4f8df7"/><path d="M18 152h96v8H18z" fill="#2f64c9"/><path d="M114 62h46v38h-46z" fill="#f2555d" opacity=".55"/><circle cx="110" cy="110" r="22" fill="#fff"/><circle cx="110" cy="110" r="18" fill="#4f8df7"/><path d="M140 22h36v36h-36z" fill="#f2555d"/></svg>'),
     slither: "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><radialGradient id="g" cx=".5" cy=".5" r=".7"><stop offset="0" stop-color="#1c2040"/><stop offset="1" stop-color="#090b18"/></radialGradient><radialGradient id="c1"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#ff6fb5"/><stop offset="1" stop-color="#ff6fb5" stop-opacity="0"/></radialGradient><radialGradient id="c2"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#ffd84d"/><stop offset="1" stop-color="#ffd84d" stop-opacity="0"/></radialGradient></defs><rect width="200" height="200" fill="url(#g)"/><circle cx="52" cy="48" r="16" fill="url(#c1)"/><circle cx="132" cy="150" r="13" fill="url(#c2)"/><path d="M30 150C60 110 70 170 100 130S150 90 160 60" fill="none" stroke="#1d7a4a" stroke-width="30" stroke-linecap="round"/><path d="M30 150C60 110 70 170 100 130S150 90 160 60" fill="none" stroke="#35c77a" stroke-width="24" stroke-linecap="round" stroke-dasharray="1 22"/><circle cx="160" cy="60" r="20" fill="#fff"/><circle cx="160" cy="60" r="16" fill="#4f8df7"/></svg>')
   };
+  function cardSrc(id) {
+    var v = S.me.cards && S.me.cards[id];
+    return v ? "/media/card_" + id + "?v=" + v : ART[id];
+  }
   function viewHome() {
     var m = S.me, u = m.user, st = m.stats, cfg = m.settings, page = h("div");
     var nm = u.username ? "@" + u.username : (u.name || "Mehmon");
     var ava = h("div", { class: "ava", style: u.photo ? "background-image:url('" + u.photo.replace(/'/g, "") + "')" : "" }, u.photo ? "" : (u.name || "?").charAt(0).toUpperCase());
     page.appendChild(h("div", { class: "top" }, ava, h("div", { class: "uname" }, nm),
       h("button", { class: "ib glass", onclick: function () { go("bonus"); }, html: IC.invite }),
-      m.is_admin ? h("button", { class: "ib glass", onclick: function () { S.view = "admin"; render(); }, html: IC.gear }) : null));
+      m.is_admin ? h("button", { class: "ib glass", onclick: openAdmin, html: IC.gear }) : null));
     var seg = h("div", { class: "seg" }, [7, 14].map(function (n) {
       return h("button", { class: S.days === n ? "on" : "", onclick: function () { S.days = n; api("stats", { days: n }).then(function (d) { S.me.stats = d; render(); }); } }, n + " kun");
     }));
     var capLeft = Math.max(0, cfg.daily_cap - st.today_earned);
+    var num = h("span", { class: "num" }, fmt(u.balance));
+    countUp(num, u.balance, S.shown == null ? 0 : S.shown); S.shown = u.balance;
     page.appendChild(h("div", { class: "glass bal" },
-      h("div", { class: "balrow" }, h("div", null, h("div", { class: "lab" }, "Asosiy balans"), h("div", { class: "big" }, fmt(u.balance), h("small", null, "so‘m"))), seg),
-      h("div", { class: "pills" }, h("div", { class: "pill g" }, "↗ +" + fmt(st.today_earned) + " so‘m bugun"), h("div", { class: "pill" }, "⏱ " + (st.today_secs ? mins(st.today_secs) : "0 daq") + " bugun")),
-      h("div", { html: chartSvg(st.series) })));
+      h("div", { class: "balrow" }, h("div", null, h("div", { class: "lab" }, "Asosiy balans"), h("div", { class: "big" }, num, h("small", null, "so‘m"))), seg),
+      h("div", { class: "pills" }, h("div", { class: "pill g" }, "↗ +" + fmt(st.today_earned) + " so‘m bugun"), h("div", { class: "pill" }, "🪙 " + fmt(st.today_coins || 0) + " coin bugun")),
+      h("div", { html: chartSvg(st.series) }), h("i", { class: "glint" })));
     page.appendChild(h("div", { class: "sec" }, "O‘yinlar"));
     page.appendChild(h("div", { class: "games" }, [["paperio", "Paper.io"], ["slither", "Slither.io"]].map(function (g) {
-      return h("button", { class: "glass gc", onclick: function () { haptic(); startGame(g[0]); } }, h("img", { src: ART[g[0]], alt: g[1] }), h("b", null, g[1]), h("span", null, "Tekin · daqiqasiga " + cfg.rate_per_min + " so‘m"));
+      return h("button", { class: "glass gc", onclick: function () { haptic(); startGame(g[0]); } }, h("div", { class: "imgw" }, h("img", { src: cardSrc(g[0]), alt: g[1] })), h("b", null, g[1]), h("span", null, "Tekin · 100🪙 = " + fmt(cfg.som_per_100_coins) + " so‘m"));
     })));
-    page.appendChild(h("div", { class: "cap" }, "Bugun o‘yindan yana " + fmt(capLeft) + " so‘m ishlashingiz mumkin (kunlik chegara " + fmt(cfg.daily_cap) + " so‘m). Daromad o‘yinda o‘tkazgan vaqtingizga qarab hisoblanadi."));
+    page.appendChild(h("div", { class: "cap" }, "Bugun o‘yindan yana " + fmt(capLeft) + " so‘m ishlashingiz mumkin (kunlik chegara " + fmt(cfg.daily_cap) + " so‘m). Daromad o‘yinda yig‘gan coinlaringizga qarab hisoblanadi."));
+    page.appendChild(h("div", { class: "cap" }, "Paper.io: egallangan hududning har 1% — " + fmt(cfg.paper_coin_per_percent) + " coin, har o‘ldirilgan raqib — " + fmt(cfg.paper_coin_per_kill) + " coin. Slither: har 1.00 ochko — " + fmt(cfg.slither_coin_per_point) + " coin."));
     return page;
   }
 
@@ -1178,7 +1353,7 @@ sendUp({type:'ready'});
   function viewBonus() {
     var page = h("div");
     page.appendChild(head("Do‘stlar va bonus"));
-    if (!S.bonus) { api("bonus").then(function (d) { S.bonus = d; if (S.tab === "bonus" && !S.view) render(); }).catch(function (e) { toast(e.message); }); page.appendChild(h("div", { class: "empty" }, "Yuklanmoqda…")); return page; }
+    if (!S.bonus) { api("bonus").then(function (d) { S.bonus = d; if (S.tab === "bonus" && !S.view) render("data"); }).catch(function (e) { toast(e.message); }); page.appendChild(h("div", { class: "empty" }, "Yuklanmoqda…")); return page; }
     var b = S.bonus, r = b.ref;
     page.appendChild(h("div", { class: "two" },
       h("div", { class: "glass stat" }, h("div", { class: "note", style: "margin:0" }, "Havolangiz orqali kirdi"), h("div", { class: "n" }, r.joined)),
@@ -1238,7 +1413,7 @@ sendUp({type:'ready'});
     } }, "Yechib olish");
     page.appendChild(h("div", { class: "glass", style: "padding:16px" }, h("div", { class: "lbl", style: "margin-top:0" }, "Yechib olish summasi"), amount, det, btn));
     page.appendChild(h("div", { class: "note" }, "So‘rovlar admin tomonidan qo‘lda ko‘rib chiqiladi va to‘lanadi. Rekvizit to‘g‘riligini tekshiring."));
-    if (!S.wds) { api("withdraw/list").then(function (d) { S.wds = d.items; if (S.tab === "withdraw" && !S.view) render(); }).catch(function () {}); }
+    if (!S.wds) { api("withdraw/list").then(function (d) { S.wds = d.items; if (S.tab === "withdraw" && !S.view) render("data"); }).catch(function () {}); }
     else if (S.wds.length) {
       page.appendChild(h("div", { class: "sec" }, "So‘rovlarim"));
       S.wds.forEach(function (w) { page.appendChild(h("div", { class: "hrow" }, h("div", { class: "ic" }, "💸"), h("div", { class: "t" }, h("b", null, fmt(w.amount) + " so‘m", statusChip(w.status)), h("small", null, dt(w.created_at))))); });
@@ -1256,7 +1431,7 @@ sendUp({type:'ready'});
       return h("button", { class: S.hflt === t[0] ? "on" : "", onclick: function () { S.hflt = t[0]; S.hist = null; render(); } }, t[1]);
     }));
     page.appendChild(tabs);
-    if (!S.hist) { api("history", { filter: S.hflt }).then(function (d) { S.hist = d; if (S.tab === "history" && !S.view) render(); }).catch(function (e) { toast(e.message); }); page.appendChild(h("div", { class: "empty" }, "Yuklanmoqda…")); return page; }
+    if (!S.hist) { api("history", { filter: S.hflt }).then(function (d) { S.hist = d; if (S.tab === "history" && !S.view) render("data"); }).catch(function (e) { toast(e.message); }); page.appendChild(h("div", { class: "empty" }, "Yuklanmoqda…")); return page; }
     var d = S.hist;
     if (S.hflt === "bonus") page.appendChild(h("div", { class: "two" },
       h("div", { class: "glass stat" }, h("div", { class: "note", style: "margin:0" }, "O‘yinlardan jami"), h("div", { class: "n g" }, fmt(d.totals.games))),
@@ -1298,25 +1473,31 @@ sendUp({type:'ready'});
       return api("game/start", { game: id }).then(function (r) { G.sid = r.sid; clearInterval(G.timer); G.timer = setInterval(function () { api("game/ping", { sid: G.sid }).catch(function () {}); }, 20000); })
         .catch(function (e) { G.sid = 0; toast(e.message); });
     }
-    function finish() {
+    /* res: o'yin natijasi — Paper.io: {peak (hudud, promille), kills}; Slither: {score (ochko × 10)}. Coin va so'mni server hisoblaydi. */
+    function finish(res) {
       var sid = G.sid; clearInterval(G.timer); G.sid = 0;
       if (!sid || sid < 0) return Promise.resolve(null);
-      return api("game/finish", { sid: sid }).then(function (r) { applyBalance(r.balance); if (S.me) { S.me.stats.today_earned += r.earned; S.me.stats.today_secs += r.secs; S.me.stats.series[S.me.stats.series.length - 1].earned += r.earned; } return r; }).catch(function () { return null; });
+      return api("game/finish", { sid: sid, result: res || null }).then(function (r) {
+        applyBalance(r.balance);
+        if (S.me) { var s = S.me.stats; s.today_earned += r.earned; s.today_secs += r.secs; s.today_coins = (s.today_coins || 0) + r.coins; s.series[s.series.length - 1].earned += r.earned; }
+        return r;
+      }).catch(function () { return null; });
     }
-    function leave() {
-      finish().then(function () { cleanup(); S.view = null; S.tab = "home"; load(); });
+    function leave(res) {
+      var r = res && (res.peak != null || res.score != null) ? res : null;
+      finish(r).then(function () { cleanup(); S.view = null; S.tab = "home"; S.dir = -1; load("enter"); });
     }
     function cleanup() { window.removeEventListener("message", onMsg); clearInterval(G.timer); root.remove(); try { tg && tg.BackButton && tg.BackButton.hide(); } catch (e) {} }
     function resultLine(r) {
       if (!r) return "";
-      return "⏱ " + mins(r.secs) + " · +" + fmt(r.earned) + " so‘m" + (r.capped ? " (kunlik chegara)" : "");
+      return "🪙 " + fmt(r.coins) + " coin · +" + fmt(r.earned) + " so‘m" + (r.capped ? " (kunlik chegara)" : "");
     }
     function paintMenu() {
       menu.textContent = "";
       menu.appendChild(h("div", { class: "gcard" }, h("div", { class: "l" }, "BULL ", h("span", null, "paper.io")),
-        h("div", { class: "s" }, "Hududingizni kengaytiring: o‘z yeringizdan chiqing, izni yopib qaytsangiz — o‘ralgan maydon sizniki. Dushman izini kessangiz u yutqazadi. Tekin: o‘ynagan vaqtingiz uchun so‘m olasiz."),
+        h("div", { class: "s" }, "Hududingizni kengaytiring: o‘z yeringizdan chiqing, izni yopib qaytsangiz — o‘ralgan maydon sizniki. Dushman izini kessangiz u yutqazadi. Tekin: egallagan hududingiz va o‘ldirgan raqiblaringiz uchun coin yig‘asiz, coin so‘mga aylanadi."),
         h("button", { class: "gb", onclick: function () { haptic(); begin().then(function () { menu.classList.remove("show"); over.classList.remove("show"); send({ type: "start", name: u.first_name || "Mehmon", photo: u.photo_url || "", round: 0, goal: 0 }); }); } }, "O‘ynash"),
-        h("button", { class: "gb g", onclick: leave }, "← Orqaga")));
+        h("button", { class: "gb g", onclick: function () { leave(); } }, "← Orqaga")));
     }
     function paintOver(m, r) {
       over.textContent = "";
@@ -1324,10 +1505,11 @@ sendUp({type:'ready'});
       if (m && m.areas) { var mx = Math.max.apply(null, m.areas); won = m.areas[0] === mx && mx > 0; }
       over.appendChild(h("div", { class: "gcard" }, h("div", { class: "l", style: "font-size:24px" }, won ? "🏆 G‘alaba!" : "💥 Yutqazdingiz"),
         m && m.cause ? h("div", { class: "s" }, m.cause) : null,
+        m ? h("div", { class: "s" }, "Eng ko‘p hudud: " + ((m.peak || 0) / 10).toFixed(1) + "% · O‘ldirdingiz: " + (m.kills || 0)) : null,
         r ? h("div", { class: "e" }, "+" + fmt(r.earned) + " so‘m") : h("div", { class: "s" }, "Hisoblanmoqda…"),
         r ? h("div", { class: "s" }, resultLine(r)) : null,
         h("button", { class: "gb", onclick: function () { over.classList.remove("show"); menu.classList.add("show"); } }, "Yana o‘ynash"),
-        h("button", { class: "gb g", onclick: leave }, "Bosh sahifa")));
+        h("button", { class: "gb g", onclick: function () { leave(); } }, "Bosh sahifa")));
       over.classList.add("show");
     }
     function onMsg(ev) {
@@ -1338,27 +1520,60 @@ sendUp({type:'ready'});
         if (!isPaper) send({ type: "profile", name: u.first_name || "Mehmon", photo: u.photo_url || "" });
       } else if (m.type === "begin") begin();
       else if (m.type === "end") {
-        if (isPaper) { paintOver(m, null); finish().then(function (r) { paintOver(m, r); }); }
-        else finish().then(function (r) { if (r) send({ type: "earned", text: "💰 " + resultLine(r) }); });
-      } else if (m.type === "exit") leave();
+        if (isPaper) { paintOver(m, null); finish({ peak: m.peak, kills: m.kills }).then(function (r) { paintOver(m, r); }); }
+        else finish({ score: m.score }).then(function (r) { if (r) send({ type: "earned", text: "💰 " + resultLine(r) }); });
+      } else if (m.type === "exit") leave(isPaper ? { peak: m.peak, kills: m.kills } : { score: m.score });
     }
     window.addEventListener("message", onMsg);
     if (isPaper) paintMenu();
-    try { if (tg && tg.BackButton) { tg.BackButton.show(); tg.BackButton.onClick(leave); } } catch (e) {}
+    try { if (tg && tg.BackButton) { tg.BackButton.show(); tg.BackButton.onClick(function () { leave(); }); } } catch (e) {}
+  }
+
+  /* rasmni yuklashga tayyorlaydi: GIF/MP4 o'z holicha, boshqa rasmlar kichraytirilib JPEG qilinadi */
+  function readImage(file, maxPx) {
+    return new Promise(function (ok, bad) {
+      if (/^(image\/gif|video\/mp4)$/.test(file.type)) {
+        if (file.size > 2400000) return bad(new Error("Fayl 2.4 MB dan oshmasin"));
+        var r = new FileReader();
+        r.onload = function () { ok(String(r.result).split(",")[1]); };
+        r.onerror = function () { bad(new Error("Fayl o‘qilmadi")); };
+        return r.readAsDataURL(file);
+      }
+      if (!/^image\//.test(file.type)) return bad(new Error("Rasm yoki GIF tanlang"));
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function () {
+        var k = Math.min(1, maxPx / Math.max(im.naturalWidth, im.naturalHeight)), w = Math.max(1, Math.round(im.naturalWidth * k)), hh = Math.max(1, Math.round(im.naturalHeight * k));
+        var c = document.createElement("canvas"); c.width = w; c.height = hh;
+        var x = c.getContext("2d"); x.fillStyle = "#0a1315"; x.fillRect(0, 0, w, hh); x.drawImage(im, 0, 0, w, hh);
+        URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.88).split(",")[1]);
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); bad(new Error("Rasm o‘qilmadi")); };
+      im.src = url;
+    });
   }
 
   /* ---------- ADMIN ---------- */
-  var AT = [["stat", "Statistika"], ["wd", "Yechishlar"], ["set", "Sozlamalar"], ["tasks", "Vazifalar"], ["user", "Foydalanuvchi"], ["msg", "Xabar"]];
+  var AT = [["stat", "Statistika"], ["wd", "Yechishlar"], ["games", "O‘yinlar"], ["start", "Start"], ["set", "Sozlamalar"], ["tasks", "Vazifalar"], ["user", "Foydalanuvchi"], ["msg", "Xabar"]];
   function viewAdmin() {
     var A = S.adm, page = h("div");
-    page.appendChild(head("Admin panel", function () { S.view = null; render(); }));
-    page.appendChild(h("div", { class: "tabs" }, AT.map(function (t) { return h("button", { class: A.tab === t[0] ? "on" : "", onclick: function () { A.tab = t[0]; A.data = null; render(); } }, t[1]); })));
+    page.appendChild(head("Admin panel", closeAdmin));
+    page.appendChild(h("div", { class: "tabs" }, AT.map(function (t) { return h("button", { class: A.tab === t[0] ? "on" : "", onclick: function () { A.tab = t[0]; A.data = null; render("data"); } }, t[1]); })));
     var body = h("div"); page.appendChild(body);
     var T = A.tab;
+    function afterMedia(r) {
+      if (S.me && r.media) S.me.cards = { paperio: (r.media.card_paperio || {}).ver || 0, slither: (r.media.card_slither || {}).ver || 0 };
+      A.data = r; A.dataTab = T; toast("Saqlandi ✓"); render("data");
+    }
+    function upload(key, input, maxPx) {
+      var f = input.files && input.files[0];
+      if (!f) return toast("Avval fayl tanlang");
+      readImage(f, maxPx).then(function (b64) { return api("admin/media/save", { key: key, data: b64 }); }).then(afterMedia).catch(function (e) { toast(e.message || "Xatolik"); });
+    }
+    function dropMedia(key) { api("admin/media/delete", { key: key }).then(afterMedia).catch(function (e) { toast(e.message); }); }
     function need(path, body_, then) {
       if (A.data && A.dataTab === T) return then(A.data);
       body.appendChild(h("div", { class: "empty" }, "Yuklanmoqda…"));
-      api(path, body_).then(function (d) { A.data = d; A.dataTab = T; if (S.view === "admin" && A.tab === T) render(); }).catch(function (e) { toast(e.message); });
+      api(path, body_).then(function (d) { A.data = d; A.dataTab = T; if (S.view === "admin" && A.tab === T) render("data"); }).catch(function (e) { toast(e.message); });
     }
     function reload(d) { A.data = d; A.dataTab = T; render(); }
     if (T === "stat") need("admin/overview", {}, function (o) {
@@ -1381,9 +1596,42 @@ sendUp({type:'ready'});
         });
       });
     }
+    else if (T === "games") need("admin/content", {}, function (d) {
+      var box = h("div", { class: "glass", style: "padding:16px;margin-bottom:14px" }, h("b", null, "🖼 O‘yin rasmlari"),
+        h("div", { class: "note", style: "margin:4px 0 12px" }, "Bosh sahifadagi o‘yin kartalaridagi rasm. JPG, PNG, WEBP yoki GIF (harakatlanuvchi) yuklang."));
+      [["paperio", "Paper.io"], ["slither", "Slither.io"]].forEach(function (g) {
+        var k = "card_" + g[0], mt = d.media[k], f = h("input", { class: "field", type: "file", accept: "image/*" });
+        box.appendChild(h("div", { class: "arow", style: "margin-bottom:14px" }, h("img", { class: "prev prevw", src: mt ? "/media/" + k + "?v=" + mt.ver : ART[g[0]] }),
+          h("div", { style: "flex:1;min-width:0;display:grid;gap:8px" }, h("b", null, g[1]), f,
+            h("div", { class: "row2" }, h("button", { class: "btn p s", style: "width:100%", onclick: function () { upload(k, f, 640); } }, "Yuklash"),
+              mt ? h("button", { class: "btn d s", style: "width:100%", onclick: function () { dropMedia(k); } }, "Standart") : h("span")))));
+      });
+      body.appendChild(box);
+      var L = [["som_per_100_coins", "100 coin necha so‘m bo‘ladi", "so‘m"], ["paper_coin_per_percent", "Paper.io: egallangan hududning har 1% uchun", "coin"], ["paper_coin_per_kill", "Paper.io: har bir o‘ldirilgan odam uchun", "coin"],
+        ["slither_coin_per_point", "Slither: har 1.00 ochko uchun", "coin"], ["daily_cap", "Kunlik o‘yin chegarasi", "so‘m / kun"], ["max_session_min", "Bir seansda hisoblanadigan eng ko‘p vaqt", "daqiqa"], ["max_coins_per_min", "Himoya: daqiqasiga eng ko‘p coin", "coin / daqiqa"]];
+      var inputs = {}, card = h("div", { class: "glass", style: "padding:16px" }, h("b", null, "🪙 Ochko va coin hisobi"));
+      card.appendChild(h("div", { class: "note", style: "margin:4px 0 12px" }, "Paper.io ochkosi = hudud foizi × (1% uchun coin) + o‘ldirilganlar × (har biri uchun coin). Masalan: 30% hudud va 2 ta o‘ldirish = 30×" + d.settings.paper_coin_per_percent + " + 2×" + d.settings.paper_coin_per_kill + " = " + (30 * d.settings.paper_coin_per_percent + 2 * d.settings.paper_coin_per_kill) + " coin."));
+      L.forEach(function (r) { var i = h("input", { class: "field sm", type: "number", inputmode: "numeric", value: String(d.settings[r[0]]) }); inputs[r[0]] = i; card.appendChild(h("div", { class: "srow" }, h("label", null, r[1], h("small", null, r[2])), i)); });
+      card.appendChild(h("button", { class: "btn p", onclick: function () { var v = {}; for (var k in inputs) v[k] = inputs[k].value; api("admin/settings/save", { values: v }).then(function (r) { d.settings = r.settings; if (S.me) Object.assign(S.me.settings, r.settings); A.data = d; toast("Saqlandi ✓"); render("data"); }).catch(function (e) { toast(e.message); }); } }, "Saqlash"));
+      body.appendChild(card);
+    });
+    else if (T === "start") need("admin/content", {}, function (d) {
+      var mt = d.media.start, ta = h("textarea", { class: "field", rows: "7", placeholder: d.default_start_text }), f = h("input", { class: "field", type: "file", accept: "image/*,video/mp4" });
+      ta.value = d.start_text || "";
+      var prev;
+      if (mt && mt.mime === "video/mp4") { prev = h("video", { class: "prev wide", src: "/media/start?v=" + mt.ver, autoplay: true, loop: true, playsinline: true }); prev.muted = true; }
+      else if (mt) prev = h("img", { class: "prev wide", src: "/media/start?v=" + mt.ver });
+      else prev = h("div", { class: "note", style: "margin:0" }, "Rasm yoki GIF qo‘yilmagan — faqat matn yuboriladi.");
+      body.appendChild(h("div", { class: "glass", style: "padding:16px;display:grid;gap:10px" }, h("b", null, "💬 /start xabari"),
+        h("div", { class: "note", style: "margin:0" }, "Foydalanuvchi botda /start bosganda shu matn yuboriladi. {name} so‘zi foydalanuvchi ismiga almashadi. Bo‘sh qoldirsangiz standart matn ketadi."),
+        ta, h("button", { class: "btn p", onclick: function () { api("admin/content/save", { start_text: ta.value }).then(function (r) { A.data = r; A.dataTab = T; toast("Matn saqlandi ✓"); }).catch(function (e) { toast(e.message); }); } }, "Matnni saqlash"),
+        h("b", { style: "margin-top:8px" }, "🖼 Rasm yoki GIF"), prev, f,
+        h("div", { class: "row2" }, h("button", { class: "btn p s", style: "width:100%", onclick: function () { upload("start", f, 1280); } }, "Yuklash"),
+          mt ? h("button", { class: "btn d s", style: "width:100%", onclick: function () { dropMedia("start"); } }, "O‘chirish") : h("span")),
+        h("div", { class: "note", style: "margin:0" }, "Telegramda rasm tagidagi matn 1000 belgigacha bo‘lishi kerak; undan uzun bo‘lsa matn rasmdan keyin alohida xabar bo‘lib ketadi.")));
+    });
     else if (T === "set") need("admin/settings", {}, function (d) {
-      var L = [["min_withdraw", "Eng kam yechib olish", "so‘m"], ["withdraw_on", "Yechib olish yoqilgan", "1 = ha, 0 = yo‘q"], ["rate_per_min", "O‘yinda daqiqasiga", "so‘m"], ["daily_cap", "Kunlik o‘yin chegarasi", "so‘m / kun"], ["max_session_min", "Bir seans eng ko‘p", "daqiqa"],
-        ["ref_join_bonus", "Do‘st qo‘shilganda bonus", "so‘m"], ["ref_active_bonus", "Do‘st faol bo‘lganda bonus", "so‘m"], ["ref_active_minutes", "Faol hisoblash uchun o‘yin vaqti", "daqiqa"], ["tasks_on", "Vazifalar (reklama) yoqilgan", "1 = ha, 0 = yo‘q"], ["link_wait_sec", "Havola ochilgach kutish", "soniya"]];
+      var L = [["min_withdraw", "Eng kam yechib olish", "so‘m"], ["withdraw_on", "Yechib olish yoqilgan", "1 = ha, 0 = yo‘q"], ["ref_join_bonus", "Do‘st qo‘shilganda bonus", "so‘m"], ["ref_active_bonus", "Do‘st faol bo‘lganda bonus", "so‘m"], ["ref_active_minutes", "Faol hisoblash uchun o‘yin vaqti", "daqiqa"], ["tasks_on", "Vazifalar (reklama) yoqilgan", "1 = ha, 0 = yo‘q"], ["link_wait_sec", "Havola ochilgach kutish", "soniya"]];
       var inputs = {};
       var card = h("div", { class: "glass", style: "padding:16px" });
       L.forEach(function (r) { var i = h("input", { class: "field sm", type: "number", inputmode: "numeric", value: String(d.settings[r[0]]) }); inputs[r[0]] = i; card.appendChild(h("div", { class: "srow" }, h("label", null, r[1], h("small", null, r[2])), i)); });
@@ -1424,6 +1672,7 @@ sendUp({type:'ready'});
   }
 
   /* ---------- boshlash ---------- */
+  initFx();
   if (!inTG && !DEV) { app.appendChild(h("div", { class: "empty" }, "Iltimos, Telegram bot orqali oching.")); } else load();
 })();
 </script>

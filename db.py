@@ -1,7 +1,8 @@
 """Ma'lumotlar bazasi va barcha hisob-kitob qoidalari (SQLite).
 
 Pul birligi — butun so'm. Balans faqat shu yerdagi funksiyalar orqali, bitta tranzaksiyada o'zgaradi va har bir o'zgarish `tx` jadvaliga yoziladi.
-O'yindan daromad — FAQAT serverdagi vaqtga qarab (mijoz yuborgan natijaga emas), kunlik chegara bilan.
+O'yindan daromad — o'yinda yig'ilgan coinga qarab (Paper.io: egallangan hudud foizi va o'ldirilganlar; Slither: yeyilgan coinlar).
+Mijoz yuborgan natija server tomonida vaqt bo'yicha (daqiqasiga eng ko'p coin) va kunlik chegara bilan cheklanadi.
 """
 import sqlite3
 import time
@@ -12,7 +13,11 @@ import config
 DEFAULTS = {
     "min_withdraw": 20000,       # eng kam yechib olish (so'm)
     "withdraw_on": 1,            # yechib olish yoqilgan (1) / o'chiq (0)
-    "rate_per_min": 60,          # o'yinda har daqiqa uchun so'm
+    "som_per_100_coins": 100,    # 100 coin necha so'm bo'ladi
+    "paper_coin_per_percent": 10,  # Paper.io: egallangan hududning har 1% uchun coin
+    "paper_coin_per_kill": 50,   # Paper.io: har bir o'ldirilgan raqib uchun coin
+    "slither_coin_per_point": 10,  # Slither: 1.00 ochko uchun coin (boshlang'ich 1.00 hisoblanmaydi)
+    "max_coins_per_min": 800,    # himoya: bir daqiqada olish mumkin bo'lgan eng ko'p coin
     "daily_cap": 3000,           # bir kunda o'yindan olinadigan eng ko'p so'm
     "max_session_min": 20,       # bir o'yin seansida hisoblanadigan eng ko'p daqiqa
     "ref_join_bonus": 300,       # do'st qo'shilganda taklif qilganga (so'm)
@@ -21,6 +26,9 @@ DEFAULTS = {
     "tasks_on": 1,               # reklama/vazifalar bo'limi yoqilgan
     "link_wait_sec": 8,          # YouTube/Instagram havolasi ochilgach tekshirishgacha kutish
 }
+START_TEXT_DEFAULT = "Salom, {name}! 🎮 Paper.io va Slither o‘yinlarini tekin o‘ynang, o‘yinda yig‘gan coinlaringiz uchun so‘m oling va do‘stlaringizni taklif qiling."
+MEDIA_KEYS = ("card_paperio", "card_slither", "start")     # admin yuklaydigan rasm/GIF'lar
+MEDIA_MAX_BYTES = 2_500_000
 KINDS_BONUS = ("ref_join", "ref_active", "ref_task")
 KINDS_FRIENDS = KINDS_BONUS
 MAX_SECS_PING_GAP = 90          # ping shu vaqtdan ko'p uzilsa — oradagi vaqt hisoblanmaydi
@@ -81,10 +89,11 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_tx_user ON tx(user_id, id);
     CREATE TABLE IF NOT EXISTS sessions(
         id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, game TEXT NOT NULL,
-        started REAL NOT NULL, last_ping REAL NOT NULL, status TEXT NOT NULL DEFAULT 'active', secs INTEGER DEFAULT 0, earned INTEGER DEFAULT 0);
+        started REAL NOT NULL, last_ping REAL NOT NULL, status TEXT NOT NULL DEFAULT 'active', secs INTEGER DEFAULT 0, earned INTEGER DEFAULT 0,
+        coins INTEGER NOT NULL DEFAULT 0);
     CREATE INDEX IF NOT EXISTS idx_sess_user ON sessions(user_id, status);
     CREATE TABLE IF NOT EXISTS daily(user_id INTEGER NOT NULL, day TEXT NOT NULL, secs INTEGER NOT NULL DEFAULT 0,
-        earned INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id, day));
+        earned INTEGER NOT NULL DEFAULT 0, coins INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id, day));
     CREATE TABLE IF NOT EXISTS tasks(
         id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL DEFAULT 'link', title TEXT NOT NULL, url TEXT NOT NULL DEFAULT '',
         chat TEXT NOT NULL DEFAULT '', reward INTEGER NOT NULL DEFAULT 0, ref_bonus INTEGER NOT NULL DEFAULT 0,
@@ -95,7 +104,13 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, amount INTEGER NOT NULL, details TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending', note TEXT DEFAULT '', created_at REAL NOT NULL, resolved_at REAL);
     CREATE INDEX IF NOT EXISTS idx_wd_user ON withdrawals(user_id, id);
+    CREATE TABLE IF NOT EXISTS media(
+        key TEXT PRIMARY KEY, mime TEXT NOT NULL, data BLOB NOT NULL, ver INTEGER NOT NULL DEFAULT 1, tg_file_id TEXT NOT NULL DEFAULT '');
     """)
+    for tbl in ("sessions", "daily"):        # eski bazalar uchun: coins ustunini qo'shish
+        cols = [r["name"] for r in con.execute(f"PRAGMA table_info({tbl})")]
+        if "coins" not in cols:
+            con.execute(f"ALTER TABLE {tbl} ADD COLUMN coins INTEGER NOT NULL DEFAULT 0")
     con.close()
 
 
@@ -128,6 +143,73 @@ def set_settings(values: dict) -> dict:
     finally:
         con.close()
     return get_settings()
+
+
+# ---------------- matn va rasmlar (admin boshqaradi) ----------------
+def get_text(key: str, default: str = "") -> str:
+    con = connect()
+    try:
+        r = con.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return r["value"] if r else default
+    finally:
+        con.close()
+
+
+def set_text(key: str, value: str):
+    con = connect()
+    try:
+        con.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+    finally:
+        con.close()
+
+
+def media_get(key: str):
+    con = connect()
+    try:
+        return con.execute("SELECT * FROM media WHERE key=?", (key,)).fetchone()
+    finally:
+        con.close()
+
+
+def media_save(key: str, mime: str, data: bytes) -> int:
+    if key not in MEDIA_KEYS:
+        raise DbError("bad_key", "Noto‘g‘ri kalit")
+    if len(data) > MEDIA_MAX_BYTES:
+        raise DbError("big", "Fayl juda katta (eng ko‘pi 2.5 MB)")
+
+    def run(con):
+        r = con.execute("SELECT ver FROM media WHERE key=?", (key,)).fetchone()
+        ver = (r["ver"] + 1) if r else 1
+        con.execute("INSERT INTO media(key,mime,data,ver,tg_file_id) VALUES(?,?,?,?,'') ON CONFLICT(key) DO UPDATE SET mime=excluded.mime, data=excluded.data, ver=excluded.ver, tg_file_id=''",
+                    (key, mime, data, ver))
+        return ver
+    return _tx(run)
+
+
+def media_delete(key: str):
+    con = connect()
+    try:
+        con.execute("DELETE FROM media WHERE key=?", (key,))
+    finally:
+        con.close()
+
+
+def media_set_file_id(key: str, ver: int, file_id: str):
+    """Telegram file_id ni saqlaydi (keyingi /start da qayta yuklamaslik uchun). Rasm almashgan bo'lsa — yozilmaydi."""
+    con = connect()
+    try:
+        con.execute("UPDATE media SET tg_file_id=? WHERE key=? AND ver=?", (file_id, key, ver))
+    finally:
+        con.close()
+
+
+def media_meta() -> dict:
+    con = connect()
+    try:
+        return {r["key"]: {"ver": r["ver"], "mime": r["mime"], "size": r["size"]}
+                for r in con.execute("SELECT key, ver, mime, LENGTH(data) AS size FROM media")}
+    finally:
+        con.close()
 
 
 # ---------------- foydalanuvchi ----------------
@@ -175,21 +257,51 @@ def get_user(uid: int):
 
 
 # ---------------- o'yin seanslari ----------------
-def _settle(con, sess, st, end_ts: float):
-    """Seansni yopadi: vaqt = (end_ts - start), serverdagi soat bo'yicha; kunlik/seans chegarasi bilan so'm hisoblanadi."""
+def _int(v, d=0):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return d
+
+
+def _clamp(v, lo, hi):
+    return max(lo, min(hi, v))
+
+
+def calc_coins(game: str, res, secs: int, st: dict) -> int:
+    """O'yin natijasidan coin hisoblaydi.
+    Paper.io: peak = eng ko'p egallangan hudud (promille, 0..1000), kills = o'ldirilgan raqiblar.
+    Slither: score = eng yuqori ochko × 10 (boshlang'ich 1.00 = 10 hisoblanmaydi).
+    Natija mijozdan keladi, shuning uchun vaqt bo'yicha (daqiqasiga eng ko'p coin) cheklanadi."""
+    if not isinstance(res, dict):
+        return 0
+    if game == "paperio":
+        peak = _clamp(_int(res.get("peak")), 0, 1000)
+        kills = _clamp(_int(res.get("kills")), 0, 100)
+        coins = peak * st["paper_coin_per_percent"] // 10 + kills * st["paper_coin_per_kill"]
+    else:
+        score10 = _clamp(_int(res.get("score")), 0, 1_000_000)
+        coins = max(0, score10 - 10) * st["slither_coin_per_point"] // 10
+    return max(0, min(coins, secs * st["max_coins_per_min"] // 60))
+
+
+def _settle(con, sess, st, end_ts: float, res=None):
+    """Seansni yopadi. Vaqt serverdagi soat bo'yicha; coin — o'yin natijasidan (res), so'm = coin × kurs, kunlik chegara bilan."""
     secs = int(max(0, min(end_ts, now()) - sess["started"]))
     secs = min(secs, st["max_session_min"] * 60)
     uid = sess["user_id"]
     day = today()
     d = con.execute("SELECT earned FROM daily WHERE user_id=? AND day=?", (uid, day)).fetchone()
     got = d["earned"] if d else 0
-    earn = max(0, min(secs * st["rate_per_min"] // 60, st["daily_cap"] - got))
-    con.execute("UPDATE sessions SET status='done', secs=?, earned=? WHERE id=?", (secs, earn, sess["id"]))
-    con.execute("INSERT INTO daily(user_id,day,secs,earned) VALUES(?,?,?,?) ON CONFLICT(user_id,day) DO UPDATE SET secs=secs+excluded.secs, earned=earned+excluded.earned",
-                (uid, day, secs, earn))
+    coins = calc_coins(sess["game"], res, secs, st)
+    som = coins * st["som_per_100_coins"] // 100
+    earn = max(0, min(som, st["daily_cap"] - got))
+    con.execute("UPDATE sessions SET status='done', secs=?, earned=?, coins=? WHERE id=?", (secs, earn, coins, sess["id"]))
+    con.execute("INSERT INTO daily(user_id,day,secs,earned,coins) VALUES(?,?,?,?,?) ON CONFLICT(user_id,day) DO UPDATE SET secs=secs+excluded.secs, earned=earned+excluded.earned, coins=coins+excluded.coins",
+                (uid, day, secs, earn, coins))
     con.execute("UPDATE users SET play_secs = play_secs + ? WHERE user_id=?", (secs, uid))
     if earn > 0:
-        _credit(con, uid, earn, "game", sess["game"])
+        _credit(con, uid, earn, "game", f"{sess['game']} · {coins} coin")
     # do'st faol bo'ldimi?
     u = con.execute("SELECT play_secs, ref_by, active_paid FROM users WHERE user_id=?", (uid,)).fetchone()
     bonus_to = None
@@ -198,7 +310,7 @@ def _settle(con, sess, st, end_ts: float):
         if st["ref_active_bonus"] > 0:
             _credit(con, u["ref_by"], st["ref_active_bonus"], "ref_active", "faol do‘st", uid)
             bonus_to = (u["ref_by"], st["ref_active_bonus"])
-    return secs, earn, bonus_to
+    return secs, earn, bonus_to, coins, som
 
 
 def game_start(uid: int, game: str) -> int:
@@ -227,8 +339,8 @@ def game_ping(uid: int, sid: int) -> bool:
         con.close()
 
 
-def game_finish(uid: int, sid: int):
-    """Seansni tugatadi. Qaytaradi: dict(secs, earned, balance, capped, friend_bonus)"""
+def game_finish(uid: int, sid: int, res=None):
+    """Seansni tugatadi. res — o'yin natijasi (Paper.io: peak, kills; Slither: score). Qaytaradi: dict(secs, coins, earned, balance, capped, friend_bonus)"""
     st = get_settings()
 
     def run(con):
@@ -237,13 +349,12 @@ def game_finish(uid: int, sid: int):
             raise DbError("no_session", "Seans topilmadi")
         if s["status"] != "active":
             bal = con.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()["balance"]
-            return {"secs": s["secs"], "earned": s["earned"], "balance": bal, "capped": False, "friend_bonus": None}
+            return {"secs": s["secs"], "coins": s["coins"], "earned": s["earned"], "balance": bal, "capped": False, "friend_bonus": None}
         # oxirgi ping uzoq bo'lsa (ilova yopilgan) — faqat ping vaqtigacha
         end = now() if now() - s["last_ping"] <= MAX_SECS_PING_GAP else s["last_ping"]
-        secs, earn, bonus_to = _settle(con, s, st, end)
+        secs, earn, bonus_to, coins, som = _settle(con, s, st, end, res)
         bal = con.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()["balance"]
-        capped = secs * st["rate_per_min"] // 60 > earn
-        return {"secs": secs, "earned": earn, "balance": bal, "capped": capped, "friend_bonus": bonus_to}
+        return {"secs": secs, "coins": coins, "earned": earn, "balance": bal, "capped": som > earn, "friend_bonus": bonus_to}
 
     return _tx(run)
 
@@ -270,9 +381,9 @@ def stats(uid: int, days: int = 7) -> dict:
         for i in range(days - 1, -1, -1):
             d = (base - timedelta(days=i)).strftime("%Y-%m-%d")
             r = rows.get(d)
-            series.append({"day": d, "earned": r["earned"] if r else 0, "secs": r["secs"] if r else 0})
+            series.append({"day": d, "earned": r["earned"] if r else 0, "secs": r["secs"] if r else 0, "coins": r["coins"] if r else 0})
         t = series[-1]
-        return {"series": series, "today_earned": t["earned"], "today_secs": t["secs"]}
+        return {"series": series, "today_earned": t["earned"], "today_secs": t["secs"], "today_coins": t["coins"]}
     finally:
         con.close()
 

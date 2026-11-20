@@ -38,6 +38,9 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/sent"):
             return self._send(200, json.dumps(SENT))
+        if self.path.startswith("/media/"):
+            row = db.media_get(self.path[7:].split("?")[0])
+            return self._send(200, bytes(row["data"]), row["mime"]) if row else self._send(404, b"")
         self._send(200, (ROOT / "index.html").read_text(encoding="utf-8"), "text/html; charset=utf-8")
 
     def do_POST(self):

@@ -1,17 +1,46 @@
-"""Telegram bot (aiogram 3): /start, Mini App tugmasi, yechib olishni bot ichidan tasdiqlash."""
+"""Telegram bot (aiogram 3): /start (admin belgilagan matn + rasm/GIF), Mini App tugmasi, yechib olishni bot ichidan tasdiqlash."""
 from aiogram import Router, F
 from aiogram.filters import Command, CommandObject, CommandStart
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
+from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 import api
 import config
 import db
 
 router = Router()
+CAPTION_MAX = 1000          # Telegram: rasm tagidagi matn 1024 belgidan oshmasin
 
 
 def open_kb(text="🎮 O‘yinlarni ochish"):
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=text, web_app=WebAppInfo(url=config.WEBAPP_URL))]])
+
+
+def welcome_text(user) -> str:
+    """Admin panel → Start bo'limida yozilgan matn. {name} — foydalanuvchi ismi."""
+    text = db.get_text("start_text", "").strip() or db.START_TEXT_DEFAULT
+    return text.replace("{name}", (user.first_name or user.username or "do‘st"))
+
+
+async def send_welcome(m: Message):
+    text, kb, media = welcome_text(m.from_user), open_kb(), db.media_get("start")
+    if media:
+        mime, ver, key = media["mime"], media["ver"], "start"
+        anim = mime in ("image/gif", "video/mp4")
+        ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "video/mp4": "mp4"}.get(mime, "bin")
+        short = len(text) <= CAPTION_MAX
+        for src in ([media["tg_file_id"]] if media["tg_file_id"] else []) + [BufferedInputFile(bytes(media["data"]), filename=f"start.{ext}")]:
+            try:
+                kw = dict(caption=text, reply_markup=kb) if short else {}
+                sent = await (m.answer_animation(src, **kw) if anim else m.answer_photo(src, **kw))
+            except Exception:
+                continue                      # eski file_id ishlamasa — faylning o'zini yuboramiz
+            fid = sent.animation.file_id if anim and sent.animation else (sent.photo[-1].file_id if sent.photo else "")
+            if fid and not isinstance(src, str):
+                db.media_set_file_id(key, ver, fid)
+            if not short:
+                await m.answer(text, reply_markup=kb)
+            return
+    await m.answer(text, reply_markup=kb)
 
 
 @router.message(CommandStart())
@@ -25,7 +54,7 @@ async def start(m: Message, command: CommandObject):
             await m.bot.send_message(inviter, f"🎉 Do‘stingiz qo‘shildi! +{paid} so‘m bonus.")
         except Exception:
             pass
-    await m.answer("Salom! 🎮 Paper.io va Slither o‘yinlarini tekin o‘ynang, vaqtingiz uchun so‘m yig‘ing va do‘stlaringizni taklif qiling.", reply_markup=open_kb())
+    await send_welcome(m)
 
 
 @router.message(Command("admin"))

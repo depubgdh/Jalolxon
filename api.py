@@ -1,5 +1,6 @@
 """API yo'llari. Hammasi POST /api/<yo'l>, tanasida {init_data, ...}. Admin yo'llari faqat ADMIN_IDS uchun."""
 import asyncio
+import base64
 
 import auth
 import config
@@ -72,10 +73,12 @@ async def api_me(c, d):
     db.settle_stale(uid)
     u = db.get_user(uid)
     st = db.get_settings()
+    mm = db.media_meta()
     return {
         "user": {"id": uid, "name": u["first_name"], "username": u["username"], "photo": u["photo"], "balance": u["balance"]},
         "stats": db.stats(uid, _i(d.get("days"), 7)),
-        "settings": {k: st[k] for k in ("min_withdraw", "withdraw_on", "ref_join_bonus", "ref_active_bonus", "ref_active_minutes", "rate_per_min", "daily_cap", "tasks_on")},
+        "settings": {k: st[k] for k in ("min_withdraw", "withdraw_on", "ref_join_bonus", "ref_active_bonus", "ref_active_minutes", "som_per_100_coins", "paper_coin_per_percent", "paper_coin_per_kill", "slither_coin_per_point", "daily_cap", "tasks_on")},
+        "cards": {g: (mm.get("card_" + g) or {}).get("ver", 0) for g in ("paperio", "slither")},
         "is_admin": c["is_admin"], "play_secs": u["play_secs"],
     }
 
@@ -97,7 +100,8 @@ async def api_game_ping(c, d):
 
 @route("game/finish")
 async def api_game_finish(c, d):
-    r = db.game_finish(c["uid"], _i(d.get("sid")))
+    res = d.get("result") if isinstance(d.get("result"), dict) else None
+    r = db.game_finish(c["uid"], _i(d.get("sid")), res)
     if r.get("friend_bonus"):
         inv, amt = r["friend_bonus"]
         asyncio.ensure_future(tgapi.send_message(inv, f"✅ Do‘stingiz faol bo‘ldi! +{amt} so‘m bonus."))
@@ -182,6 +186,59 @@ async def api_a_settings(c, d):
 @route("admin/settings/save", admin=True)
 async def api_a_settings_save(c, d):
     return {"settings": db.set_settings(d.get("values") or {})}
+
+
+def _sniff(b: bytes, allow_video: bool = False):
+    """Fayl turini boshidagi baytlardan aniqlaydi (mijoz aytgan turga ishonilmaydi)."""
+    if b[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if b[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if b[:4] == b"GIF8":
+        return "image/gif"
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+        return "image/webp"
+    if allow_video and b[4:8] == b"ftyp":
+        return "video/mp4"
+    return None
+
+
+@route("admin/content", admin=True)
+async def api_a_content(c, d):
+    return {"start_text": db.get_text("start_text", ""), "default_start_text": db.START_TEXT_DEFAULT,
+            "media": db.media_meta(), "settings": db.get_settings()}
+
+
+@route("admin/content/save", admin=True)
+async def api_a_content_save(c, d):
+    text = str(d.get("start_text", "")).strip()[:3500]
+    db.set_text("start_text", text)
+    return await api_a_content(c, d)
+
+
+@route("admin/media/save", admin=True)
+async def api_a_media_save(c, d):
+    key = str(d.get("key", ""))
+    if key not in db.MEDIA_KEYS:
+        raise ApiError(400, "bad_key", "Noto‘g‘ri kalit")
+    try:
+        raw = base64.b64decode(str(d.get("data", "")), validate=False)
+    except Exception:
+        raise ApiError(400, "bad_file", "Fayl o‘qilmadi")
+    mime = _sniff(raw, allow_video=(key == "start"))
+    if not mime:
+        raise ApiError(400, "bad_type", "Faqat JPG, PNG, WEBP yoki GIF" + (" (yoki MP4)" if key == "start" else "") + " yuklang")
+    db.media_save(key, mime, raw)
+    return await api_a_content(c, d)
+
+
+@route("admin/media/delete", admin=True)
+async def api_a_media_delete(c, d):
+    key = str(d.get("key", ""))
+    if key not in db.MEDIA_KEYS:
+        raise ApiError(400, "bad_key", "Noto‘g‘ri kalit")
+    db.media_delete(key)
+    return await api_a_content(c, d)
 
 
 @route("admin/tasks", admin=True)
