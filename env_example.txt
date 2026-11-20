@@ -1,0 +1,6 @@
+BOT_TOKEN=123456:ABC...
+ADMIN_IDS=111111111,222222222
+WEBAPP_URL=https://sizning-domen.up.railway.app
+# BOT_USERNAME bo'sh qolsa bot o'zi aniqlaydi
+DB_PATH=bullplay.sqlite3
+PORT=8080
