@@ -83,8 +83,8 @@ body.imm #nav{display:none}
 #nav button svg{width:26px;height:26px}
 #nav button.on{color:var(--acc);background:linear-gradient(145deg,rgba(62,230,192,.25),rgba(62,230,192,.08));border:1.5px solid rgba(62,230,192,.5)}
 #toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);max-width:90%;padding:11px 18px;border-radius:16px;background:rgba(20,30,32,.96);border:1.5px solid var(--line);font-weight:700;font-size:14px;z-index:99;display:none;text-align:center}
-.game{position:fixed;inset:0;z-index:40;background:#080a16;overflow:hidden;display:flex;flex-direction:column}
-.gstage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
+.game{position:fixed;inset:0;z-index:40;background:#080a16;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.gstage{position:relative;height:100%;overflow:hidden}
 .gfr{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 .gov{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;background:rgba(10,26,74,.55);padding:20px}
 .gov.show{display:flex}
@@ -1482,7 +1482,7 @@ sendUp({type:'ready'});
     /* ---- YouTube video moduli (video.js): o'yin mexanizmidan alohida. Muammo bo'lsa o'yin pauzaga tushadi ---- */
     var vc = window.BullVideo ? window.BullVideo.create({
       mount: root, overlay: stage, api: api,
-      onPause: function () { send({ type: "pause" }); },
+      onPause: function () { send({ type: "pause" }); try { root.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) {} },   /* xabar o'yin ustida chiqadi — tepaga qaytaramiz */
       onResume: function () { send({ type: "resume" }); if (G.pending) { var f = G.pending; G.pending = null; f(); } }
     }) : null;
     /* go() faqat video haqiqatan PLAYING bo'lgach chaqiriladi. Birinchi marta — birinchi videodan; keyingi qayta urinishlarda video tegilmaydi */
@@ -1512,7 +1512,8 @@ sendUp({type:'ready'});
       var r = res && (res.peak != null || res.score != null) ? res : null;
       finish(r).then(function () { cleanup(); S.view = null; S.tab = "home"; S.dir = -1; load("enter"); });
     }
-    function cleanup() { window.removeEventListener("message", onMsg); clearInterval(G.timer); if (vc) vc.destroy(); root.remove(); try { tg && tg.BackButton && tg.BackButton.hide(); } catch (e) {} }
+    try { if (tg && tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}      /* o'yin paytida Telegram yopilib qolmasligi uchun */
+    function cleanup() { try { if (tg && tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {} window.removeEventListener("message", onMsg); clearInterval(G.timer); if (vc) vc.destroy(); root.remove(); try { tg && tg.BackButton && tg.BackButton.hide(); } catch (e) {} }
     function resultLine(r) {
       if (!r) return "";
       return "🪙 " + fmt(r.coins) + " coin · +" + fmt(r.earned) + " so‘m" + (r.capped ? " (kunlik chegara)" : "");
@@ -1550,8 +1551,7 @@ sendUp({type:'ready'});
       if (ev.source !== frame.contentWindow) return;
       var m = ev.data || {};
       if (m.type === "ready") {
-        var sf = pioSafe();      /* pastki xavfsiz chekka video panelida hisobga olinadi, o'yin maydoni ekran tagiga yetmaydi */
-        send({ type: "safe", top: sf.top, bottom: vc ? 0 : sf.bottom });
+        send(Object.assign({ type: "safe" }, pioSafe()));
         if (!isPaper) send({ type: "profile", name: u.first_name || "Mehmon", photo: u.photo_url || "" });
       } else if (m.type === "begin") {
         begin();

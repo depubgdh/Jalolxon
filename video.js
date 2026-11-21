@@ -28,7 +28,9 @@
 
   var CSS = ".bv-wrap{flex:none;position:relative;z-index:3;background:#05070d;border-top:2px solid rgba(255,255,255,.12);padding-bottom:env(safe-area-inset-bottom,0px)}" +
     ".bv-cap{display:flex;align-items:center;gap:8px;padding:6px 12px;font:700 12px/1.2 system-ui,-apple-system,sans-serif;color:#bfeee2;white-space:nowrap;overflow:hidden}" +
-    ".bv-cap .t{overflow:hidden;text-overflow:ellipsis;min-width:0}" +
+    ".bv-cap .t{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}" +
+    ".bv-up{flex:none;border:0;border-radius:12px;padding:6px 10px;background:rgba(255,255,255,.14);color:#fff;font:800 12px system-ui,sans-serif;cursor:pointer}" +
+    ".bv-down{position:absolute;left:50%;bottom:calc(6px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;border:0;border-radius:14px;padding:6px 12px;background:rgba(10,14,30,.55);color:#fff;font:800 12px system-ui,sans-serif;cursor:pointer;backdrop-filter:blur(4px)}" +
     ".bv-player{position:relative;width:100%;height:clamp(200px,56.25vw,36vh);background:#000}" +
     ".bv-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}" +
     ".bv-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7d8aa0;font:600 14px system-ui,sans-serif;text-align:center;padding:16px}" +
@@ -99,9 +101,15 @@
     /* --- ko'rinish --- */
     var wrap = mk("div", "bv-wrap"), cap = mk("div", "bv-cap"), capT = mk("span", "t", "Video yuklanmoqda…");
     var box = mk("div", "bv-player");
-    cap.appendChild(mk("span", "d", "🎵")); cap.appendChild(capT);
+    var up = mk("button", "bv-up", "⬆ O‘yin");
+    cap.appendChild(mk("span", "d", "🎵")); cap.appendChild(capT); cap.appendChild(up);
     wrap.appendChild(cap); wrap.appendChild(box);
     opts.mount.appendChild(wrap);
+    /* o'yin butun ekranni egallaydi, video ekran tagida: pastga surish yoki tugma bilan o'tiladi */
+    var down = mk("button", "bv-down", "🎵 Video ⬇");
+    opts.overlay.appendChild(down);
+    down.onclick = function () { opts.mount.scrollTo({ top: wrap.offsetTop, behavior: "smooth" }); };
+    up.onclick = function () { opts.mount.scrollTo({ top: 0, behavior: "smooth" }); };
 
     var fault_ = mk("div", "bv-fault"), card = mk("div", "bv-card"), msgEl = mk("div", "m", MSG), btn = mk("button", null, "Davom ettirish");
     card.appendChild(mk("div", "i", "⏸")); card.appendChild(msgEl); card.appendChild(btn);
