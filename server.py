@@ -15,6 +15,11 @@ async def index(request):
     return web.Response(text=(ROOT / "index.html").read_text(encoding="utf-8"), content_type="text/html", headers=NO_STORE)
 
 
+async def video_js(request):
+    """YouTube video moduli (alohida fayl): index.html uni <script src="/video.js"> bilan ulaydi."""
+    return web.Response(text=(ROOT / "video.js").read_text(encoding="utf-8"), content_type="application/javascript", headers=NO_STORE)
+
+
 async def media(request):
     """Admin yuklagan rasm/GIF (o'yin kartalari, /start rasmi). ?v=<versiya> bilan keshlanadi."""
     key = request.match_info["key"]
@@ -47,6 +52,7 @@ def make_app():
     app = web.Application(client_max_size=1024 * 1024 * 4)
     app.router.add_get("/", index)
     app.router.add_get("/health", lambda r: web.Response(text="ok"))
+    app.router.add_get("/video.js", video_js)
     app.router.add_get("/media/{key}", media)
     app.router.add_post("/api/{path:.*}", handle_api)
     return app

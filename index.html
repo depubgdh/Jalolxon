@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>UZB cash bot</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="/video.js"></script>
 <style>
 :root{--bg:#0a1315;--card:rgba(255,255,255,.055);--line:rgba(255,255,255,.13);--text:#eef6f4;--muted:#8fa6a1;--acc:#3ee6c0;--acc2:#1fb897;--red:#ff6b7d;--warn:#ffcf5c}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -82,7 +83,8 @@ body.imm #nav{display:none}
 #nav button svg{width:26px;height:26px}
 #nav button.on{color:var(--acc);background:linear-gradient(145deg,rgba(62,230,192,.25),rgba(62,230,192,.08));border:1.5px solid rgba(62,230,192,.5)}
 #toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);max-width:90%;padding:11px 18px;border-radius:16px;background:rgba(20,30,32,.96);border:1.5px solid var(--line);font-weight:700;font-size:14px;z-index:99;display:none;text-align:center}
-.game{position:fixed;inset:0;z-index:40;background:#080a16;overflow:hidden}
+.game{position:fixed;inset:0;z-index:40;background:#080a16;overflow:hidden;display:flex;flex-direction:column}
+.gstage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
 .gfr{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 .gov{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;background:rgba(10,26,74,.55);padding:20px}
 .gov.show{display:flex}
@@ -763,13 +765,17 @@ addEventListener('message',e=>{
   const m=e.data;if(!m||typeof m!=='object')return;
   if(m.type==='safe'){const r=document.documentElement.style;r.setProperty('--st',(m.top||0)+'px');r.setProperty('--sb',(m.bottom||0)+'px')}
   else if(m.type==='start')startRound(m);
+  else if(m.type==='pause')paused=true;           /* YouTube video moduli: video muammosida o'yinni to'xtatadi */
+  else if(m.type==='resume')paused=false;
 });
 $('bk').onclick=()=>sendUp(playing?{type:'exit',peak:Math.round(best*10),kills:me.kills}:{type:'exit'});
 pl.slice(1).forEach(spawn);
+let paused=false;
 let last=performance.now(),hT=0;
 function loop(t){
   const dt=Math.min(.05,(t-last)/1000);last=t;
-  update(dt);flush();draw();
+  if(!paused)update(dt);
+  flush();draw();
   if((hT-=dt)<=0){hT=.2;hud();drawMini()}
   requestAnimationFrame(loop);
 }
@@ -1128,16 +1134,20 @@ $('bk').onclick=()=>sendUp(state==='play'?{type:'exit',score:Math.round(peak*10)
 addEventListener('message',e=>{
   const m=e.data;if(!m||typeof m!=='object')return;
   if(m.type==='safe'){const r=document.documentElement.style;r.setProperty('--st',(m.top||0)+'px');r.setProperty('--sb',(m.bottom||0)+'px')}
+  else if(m.type==='pause')paused=true;           /* YouTube video moduli: video muammosida o'yinni to'xtatadi */
+  else if(m.type==='resume')paused=false;
   else if(m.type==='profile'){
     profName=(m.name||'Mehmon').toString().slice(0,14);profPhoto=m.photo||'';snakes[0].name=profName;
     if(profPhoto){myImg=new Image();myImg.referrerPolicy='no-referrer';myImg.src=profPhoto}
   }else if(m.type==='earned'){const d=document.createElement('div');d.className='s';d.style.color='#8fe3a8';d.textContent=m.text||'';card.insertBefore(d,$('go'))}else if(m.type==='top'){top=m.top||[];mine=m.mine||mine;if(state==='menu')menu()}
 });
 init();newRound();menu();
+let paused=false;
 let last=performance.now(),hT=0;
 function loop(ts){
   const dt=Math.min(.05,(ts-last)/1000);last=ts;
-  step(dt);draw(ts/1000,dt);
+  if(!paused)step(dt);
+  draw(ts/1000,dt);
   if((hT-=dt)<=0){hT=.15;hud();drawMini()}
   requestAnimationFrame(loop);
 }
@@ -1463,10 +1473,25 @@ sendUp({type:'ready'});
     var frame = h("iframe", { class: "gfr", title: id, allow: "autoplay; fullscreen" });
     frame.srcdoc = srcDoc(isPaper ? "pio" : "sl");
     var menu = h("div", { class: "gov" + (isPaper ? " show" : "") }), over = h("div", { class: "gov" });
-    var root = h("div", { class: "game" }, frame, isPaper ? menu : null, over);
+    var stage = h("div", { class: "gstage" }, frame, isPaper ? menu : null, over);      /* o'yin maydoni (tepada) */
+    var root = h("div", { class: "game" }, stage);                                       /* video paneli stage ostiga video.js tomonidan qo'shiladi */
     document.body.appendChild(root);
     var u = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
     function send(m) { if (frame.contentWindow) frame.contentWindow.postMessage(m, "*"); }
+
+    /* ---- YouTube video moduli (video.js): o'yin mexanizmidan alohida. Muammo bo'lsa o'yin pauzaga tushadi ---- */
+    var vc = window.BullVideo ? window.BullVideo.create({
+      mount: root, overlay: stage, api: api,
+      onPause: function () { send({ type: "pause" }); },
+      onResume: function () { send({ type: "resume" }); if (G.pending) { var f = G.pending; G.pending = null; f(); } }
+    }) : null;
+    /* go() faqat video haqiqatan PLAYING bo'lgach chaqiriladi. Birinchi marta — birinchi videodan; keyingi qayta urinishlarda video tegilmaydi */
+    function launch(go) {
+      if (!vc) return go();
+      if (G.vOn) { vc.ensure().then(function (ok) { if (ok) go(); else G.pending = go; }); return; }
+      G.vOn = true;
+      vc.start().then(function (ok) { if (ok) go(); else G.pending = go; });
+    }
     function begin() {
       if (G.sid) return Promise.resolve();
       G.sid = -1;
@@ -1487,7 +1512,7 @@ sendUp({type:'ready'});
       var r = res && (res.peak != null || res.score != null) ? res : null;
       finish(r).then(function () { cleanup(); S.view = null; S.tab = "home"; S.dir = -1; load("enter"); });
     }
-    function cleanup() { window.removeEventListener("message", onMsg); clearInterval(G.timer); root.remove(); try { tg && tg.BackButton && tg.BackButton.hide(); } catch (e) {} }
+    function cleanup() { window.removeEventListener("message", onMsg); clearInterval(G.timer); if (vc) vc.destroy(); root.remove(); try { tg && tg.BackButton && tg.BackButton.hide(); } catch (e) {} }
     function resultLine(r) {
       if (!r) return "";
       return "🪙 " + fmt(r.coins) + " coin · +" + fmt(r.earned) + " so‘m" + (r.capped ? " (kunlik chegara)" : "");
@@ -1496,7 +1521,16 @@ sendUp({type:'ready'});
       menu.textContent = "";
       menu.appendChild(h("div", { class: "gcard" }, h("div", { class: "l" }, "BULL ", h("span", null, "paper.io")),
         h("div", { class: "s" }, "Hududingizni kengaytiring: o‘z yeringizdan chiqing, izni yopib qaytsangiz — o‘ralgan maydon sizniki. Dushman izini kessangiz u yutqazadi. Tekin: egallagan hududingiz va o‘ldirgan raqiblaringiz uchun coin yig‘asiz, coin so‘mga aylanadi."),
-        h("button", { class: "gb", onclick: function () { haptic(); begin().then(function () { menu.classList.remove("show"); over.classList.remove("show"); send({ type: "start", name: u.first_name || "Mehmon", photo: u.photo_url || "", round: 0, goal: 0 }); }); } }, "O‘ynash"),
+        h("button", { class: "gb", onclick: function (ev) {
+          if (G.busy) return; G.busy = true; haptic();
+          var b = ev.currentTarget; b.textContent = vc && !G.vOn ? "Video yuklanmoqda…" : "O‘ynash";
+          begin().then(function () {
+            launch(function () {
+              G.busy = false; b.textContent = "O‘ynash"; menu.classList.remove("show"); over.classList.remove("show");
+              send({ type: "start", name: u.first_name || "Mehmon", photo: u.photo_url || "", round: 0, goal: 0 });
+            });
+          });
+        } }, "O‘ynash"),
         h("button", { class: "gb g", onclick: function () { leave(); } }, "← Orqaga")));
     }
     function paintOver(m, r) {
@@ -1516,9 +1550,13 @@ sendUp({type:'ready'});
       if (ev.source !== frame.contentWindow) return;
       var m = ev.data || {};
       if (m.type === "ready") {
-        send(Object.assign({ type: "safe" }, pioSafe()));
+        var sf = pioSafe();      /* pastki xavfsiz chekka video panelida hisobga olinadi, o'yin maydoni ekran tagiga yetmaydi */
+        send({ type: "safe", top: sf.top, bottom: vc ? 0 : sf.bottom });
         if (!isPaper) send({ type: "profile", name: u.first_name || "Mehmon", photo: u.photo_url || "" });
-      } else if (m.type === "begin") begin();
+      } else if (m.type === "begin") {
+        begin();
+        if (!isPaper) { if (vc && !G.vOn) send({ type: "pause" }); launch(function () { send({ type: "resume" }); }); }     /* Slither: o'yin o'zi boshlaydi — video PLAYING bo'lguncha pauza */
+      }
       else if (m.type === "end") {
         if (isPaper) { paintOver(m, null); finish({ peak: m.peak, kills: m.kills }).then(function (r) { paintOver(m, r); }); }
         else finish({ score: m.score }).then(function (r) { if (r) send({ type: "earned", text: "💰 " + resultLine(r) }); });
@@ -1553,7 +1591,7 @@ sendUp({type:'ready'});
   }
 
   /* ---------- ADMIN ---------- */
-  var AT = [["stat", "Statistika"], ["wd", "Yechishlar"], ["games", "O‘yinlar"], ["start", "Start"], ["set", "Sozlamalar"], ["tasks", "Vazifalar"], ["user", "Foydalanuvchi"], ["msg", "Xabar"]];
+  var AT = [["stat", "Statistika"], ["wd", "Yechishlar"], ["games", "O‘yinlar"], ["videos", "Videolar"], ["start", "Start"], ["set", "Sozlamalar"], ["tasks", "Vazifalar"], ["user", "Foydalanuvchi"], ["msg", "Xabar"]];
   function viewAdmin() {
     var A = S.adm, page = h("div");
     page.appendChild(head("Admin panel", closeAdmin));
@@ -1614,6 +1652,41 @@ sendUp({type:'ready'});
       L.forEach(function (r) { var i = h("input", { class: "field sm", type: "number", inputmode: "numeric", value: String(d.settings[r[0]]) }); inputs[r[0]] = i; card.appendChild(h("div", { class: "srow" }, h("label", null, r[1], h("small", null, r[2])), i)); });
       card.appendChild(h("button", { class: "btn p", onclick: function () { var v = {}; for (var k in inputs) v[k] = inputs[k].value; api("admin/settings/save", { values: v }).then(function (r) { d.settings = r.settings; if (S.me) Object.assign(S.me.settings, r.settings); A.data = d; toast("Saqlandi ✓"); render("data"); }).catch(function (e) { toast(e.message); }); } }, "Saqlash"));
       body.appendChild(card);
+    });
+    else if (T === "videos") need("admin/videos", {}, function (d) {
+      /* YouTube videolar ro'yxati: o'yin ostida shu tartibda ketma-ket (cheksiz takrorlanib) ijro etiladi; yangilari ro'yxat oxiriga qo'shiladi */
+      var url = h("input", { class: "field", placeholder: "YouTube havolasi (https://youtu.be/... yoki watch?v=...)" }), ttl = h("input", { class: "field sm", placeholder: "Nomi (bo‘sh qoldirsangiz YouTube’dagi nomi olinadi)" });
+      var chk = h("div", { class: "note", style: "margin:0" }, "Havolani kiriting va «Tekshirish» ni bosing.");
+      function fail(e) { toast(e.message || "Xatolik"); }
+      var addCard = h("div", { class: "glass", style: "padding:14px;margin-bottom:14px;display:grid;gap:10px" }, h("b", null, "➕ Video qo‘shish"), url, ttl, chk,
+        h("div", { class: "row2" },
+          h("button", { class: "btn s", style: "width:100%", onclick: function () {
+            chk.textContent = "Tekshirilmoqda…";
+            api("admin/video/check", { url: url.value }).then(function (r) {
+              chk.textContent = r.found === true ? "✅ Topildi: " + r.title : r.found === false ? "❌ Video topilmadi, yopiq yoki boshqa saytlarda ijro etish taqiqlangan" : "⚠ YouTube’ga ulanib bo‘lmadi — havola to‘g‘ri ko‘rinadi, lekin tekshirilmadi";
+              if (r.found === true && !ttl.value.trim()) ttl.value = r.title;
+            }).catch(function (e) { chk.textContent = "❌ " + (e.message || "Xatolik"); });
+          } }, "Tekshirish"),
+          h("button", { class: "btn p s", style: "width:100%", onclick: function () {
+            api("admin/video/add", { url: url.value, title: ttl.value }).then(function (r) { reload(r); toast(r.verified === false ? "Qo‘shildi (YouTube’ga ulanib bo‘lmadi, tekshirilmadi)" : "Ro‘yxat oxiriga qo‘shildi ✓"); }).catch(fail);
+          } }, "Qo‘shish")));
+      body.appendChild(addCard);
+      var latest = d.items.filter(function (v) { return v.id === d.latest_id; })[0];
+      body.appendChild(h("div", { class: "glass", style: "padding:12px 14px;margin-bottom:14px" }, h("b", null, "🎬 Jami: " + d.count + " ta video"),
+        h("div", { class: "note", style: "margin:4px 0 0" }, "Faol: " + d.active_count + " ta" + (latest ? " · eng oxirgi qo‘shilgan: " + latest.title : "") + ". Foydalanuvchi o‘yinni boshlaganda 1-videodan boshlanadi, oxirgisidan keyin yana 1-videoga qaytadi.")));
+      if (!d.items.length) body.appendChild(h("div", { class: "empty" }, "Hali video qo‘shilmagan"));
+      d.items.forEach(function (v, i) {
+        body.appendChild(h("div", { class: "glass", style: "padding:12px 14px;margin-bottom:10px;display:grid;gap:8px" + (v.active ? "" : ";opacity:.55") },
+          h("div", { style: "display:flex;gap:10px;align-items:flex-start" }, h("b", { style: "flex:none;min-width:26px" }, (i + 1) + "."),
+            h("div", { style: "flex:1;min-width:0" }, h("b", { style: "display:block;word-break:break-word" }, v.title + (v.id === d.latest_id ? "  🆕" : "") + (v.active ? "" : "  (o‘chiq)")),
+              h("small", { style: "color:var(--muted)" }, v.vid + " · " + dt(v.created_at)))),
+          h("div", { style: "display:flex;gap:6px;flex-wrap:wrap" },
+            h("button", { class: "btn s", disabled: i === 0, onclick: function () { api("admin/video/move", { id: v.id, dir: -1 }).then(reload).catch(fail); } }, "⬆"),
+            h("button", { class: "btn s", disabled: i === d.items.length - 1, onclick: function () { api("admin/video/move", { id: v.id, dir: 1 }).then(reload).catch(fail); } }, "⬇"),
+            h("button", { class: "btn s", onclick: function () { var n = prompt("Video nomi", v.title); if (n === null || !n.trim()) return; api("admin/video/save", { id: v.id, title: n }).then(reload).catch(fail); } }, "✏️ Nomi"),
+            h("button", { class: "btn s", onclick: function () { api("admin/video/save", { id: v.id, active: !v.active }).then(reload).catch(fail); } }, v.active ? "O‘chirib qo‘yish" : "Yoqish"),
+            h("button", { class: "btn d s", onclick: function () { if (confirm("Videoni ro‘yxatdan o‘chirasizmi? Hozir ijro etilayotgan foydalanuvchilarda u oxirigacha davom etadi.")) api("admin/video/delete", { id: v.id }).then(reload).catch(fail); } }, "🗑"))));
+      });
     });
     else if (T === "start") need("admin/content", {}, function (d) {
       var mt = d.media.start, ta = h("textarea", { class: "field", rows: "7", placeholder: d.default_start_text }), f = h("input", { class: "field", type: "file", accept: "image/*,video/mp4" });

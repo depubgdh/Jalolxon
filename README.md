@@ -19,3 +19,12 @@
 - O'yindan daromad: o'yinda yig'ilgan **coin**ga qarab (daqiqaga emas). Paper.io: egallangan hudud foizi × (1% uchun coin) + o'ldirilganlar × (har biri uchun coin). Slither: yig'ilgan ochko × (1.00 ochko uchun coin). So'm = coin × kurs (100 coin = N so'm). Natija mijozdan keladi, shuning uchun server uni vaqt bo'yicha (daqiqasiga eng ko'p coin) va kunlik chegara bilan cheklaydi.
 - Do'st qo'shilsa: 300 so'm; faol bo'lsa (10 daqiqa o'ynasa): +700 so'm. Vazifalar: bajargan va taklif qilgan odamga alohida bonus.
 - Yechib olish: so'rov adminga keladi (bot tugmalari yoki panel); to'lovni admin o'zi amalga oshiradi. Rad etilsa balansga qaytadi.
+
+## YouTube video tizimi (alohida modul)
+Fayllar: `video.js` (mijoz moduli, YouTube IFrame API), `videos.py` (baza va tartib qoidasi), `api.py` oxiridagi `videos/next` va `admin/video/*` yo'llari. O'yin kodiga faqat `pause`/`resume` xabarlari qo'shilgan.
+- O'yin ekranining tepasida, pastida esa doim ko'rinadigan ovozsiz YouTube pleyer. **O'ynash** bosilganda 1-video ishga tushadi; pleyer haqiqatan PLAYING bo'lgach o'yin boshlanadi.
+- Videolar admin belgilagan tartibda ketadi, oxirgisidan keyin yana 1-video (LOOP). Yangi video har doim ro'yxat oxiriga qo'shiladi.
+- Yutqazish, «Yana o'ynash» va raund almashishi videoni tegmaydi. Video faqat o'yindan chiqib, qaytadan kirilganda 1-videodan boshlanadi.
+- Internet uzilsa, video BUFFERING (10 soniyadan ko'p), to'xtab qolsa, xatolik bersa yoki avtomatik ijro bloklansa — o'yin pauzaga tushadi va «Davom ettirish» tugmasi chiqadi. Tugma internetni tekshiradi, joriy videoni boshidan ishga tushiradi va PLAYING bo'lgach o'yin davom etadi.
+- Admin → **Videolar**: havolani tekshirish va qo'shish, o'chirish, ⬆⬇ tartib, nomini tahrirlash, o'chirib qo'yish (faolsiz), jami soni va oxirgi qo'shilgani. O'chirilgan video hozir ijro etilayotgan foydalanuvchida oxirigacha davom etadi, keyingi aylanishda esa yo'q.
+- Har bir foydalanuvchining navbati o'z qurilmasida saqlanadi — bir-biriga xalaqit bermaydi. Jadval `videos` birinchi ishga tushirishda o'zi yaratiladi.

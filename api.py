@@ -6,6 +6,7 @@ import auth
 import config
 import db
 import tgapi
+import videos
 
 ROUTES = {}
 ADMIN_ROUTES = set()
@@ -316,3 +317,60 @@ async def api_a_broadcast(c, d):
             _BROADCAST["running"] = False
     asyncio.ensure_future(run())
     return {"total": len(ids)}
+
+
+# ===================== YouTube videolar (videos.py) =====================
+@route("videos/next")
+async def api_v_next(c, d):
+    """Foydalanuvchining video pleyeri uchun: birinchi video (argumentsiz) yoki berilgan videodan keyingisi."""
+    after_id = d.get("after_id")
+    v, total = videos.next_after(_i(after_id, None) if after_id is not None else None, d.get("after_pos"))
+    return {"video": v and {k: v[k] for k in ("id", "vid", "title", "pos")}, "count": total}
+
+
+@route("admin/videos", admin=True)
+async def api_a_videos(c, d):
+    return videos.admin_list()
+
+
+@route("admin/video/check", admin=True)
+async def api_a_video_check(c, d):
+    vid = videos.parse_id(d.get("url", ""))
+    if not vid:
+        raise ApiError(400, "bad_url", "YouTube havolasi noto‘g‘ri")
+    r = await videos.check(vid)
+    return {"video_id": vid, "found": r["found"], "title": r["title"]}
+
+
+@route("admin/video/add", admin=True)
+async def api_a_video_add(c, d):
+    url = str(d.get("url", "")).strip()
+    vid = videos.parse_id(url)
+    if not vid:
+        raise ApiError(400, "bad_url", "YouTube havolasi noto‘g‘ri")
+    r = await videos.check(vid)
+    if r["found"] is False:
+        raise ApiError(400, "not_found", "Video topilmadi, yopiq yoki boshqa saytlarda ijro etish taqiqlangan")
+    title = str(d.get("title", "")).strip() or r["title"]
+    videos.add(vid, f"https://www.youtube.com/watch?v={vid}", title)
+    out = videos.admin_list()
+    out["verified"] = r["found"] is True       # False — YouTube'ga ulanib bo'lmadi, havola tekshirilmadan qo'shildi
+    return out
+
+
+@route("admin/video/delete", admin=True)
+async def api_a_video_delete(c, d):
+    videos.delete(_i(d.get("id")))
+    return videos.admin_list()
+
+
+@route("admin/video/save", admin=True)
+async def api_a_video_save(c, d):
+    videos.save(_i(d.get("id")), d.get("title"), None if d.get("active") is None else bool(d.get("active")))
+    return videos.admin_list()
+
+
+@route("admin/video/move", admin=True)
+async def api_a_video_move(c, d):
+    videos.move(_i(d.get("id")), -1 if _i(d.get("dir")) < 0 else 1)
+    return videos.admin_list()

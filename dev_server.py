@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 os.environ.setdefault("DB_PATH", tempfile.mkdtemp() + "/dev.sqlite3")
 os.environ.setdefault("ADMIN_IDS", "7")
 os.environ.setdefault("BOT_USERNAME", "bullplay_bot")
-import api, config, db, tgapi  # noqa: E402
+import api, config, db, tgapi, videos  # noqa: E402
 
 SENT = []
 
@@ -25,6 +25,7 @@ async def fake_member(chat, uid):
 
 tgapi.send_message, tgapi.member_status = fake_send, fake_member
 db.init_db()
+videos.init()
 ROOT = pathlib.Path(__file__).parent
 
 
@@ -38,6 +39,8 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/sent"):
             return self._send(200, json.dumps(SENT))
+        if self.path.startswith("/video.js"):
+            return self._send(200, (ROOT / "video.js").read_text(encoding="utf-8"), "application/javascript; charset=utf-8")
         if self.path.startswith("/media/"):
             row = db.media_get(self.path[7:].split("?")[0])
             return self._send(200, bytes(row["data"]), row["mime"]) if row else self._send(404, b"")

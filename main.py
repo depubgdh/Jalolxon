@@ -9,6 +9,7 @@ import bot as bot_mod
 import config
 import db
 import server
+import videos
 
 
 async def main():
@@ -16,6 +17,7 @@ async def main():
     if not config.BOT_TOKEN or not config.WEBAPP_URL:
         raise SystemExit("BOT_TOKEN va WEBAPP_URL ni sozlang (.env.example ga qarang)")
     db.init_db()
+    videos.init()
     bot = Bot(config.BOT_TOKEN)
     if not config.BOT_USERNAME:
         config.BOT_USERNAME = (await bot.get_me()).username
