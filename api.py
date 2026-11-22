@@ -54,7 +54,7 @@ async def dispatch(path: str, body: dict, dev_user: dict = None):
     ref = start[4:] if start.startswith("ref_") else None
     user, is_new, inviter, paid = db.ensure_user(uid, tg_user.get("username") or "", tg_user.get("first_name") or "", tg_user.get("photo_url") or "", ref)
     if is_new and inviter and paid:
-        asyncio.ensure_future(tgapi.send_message(inviter, f"🎉 Do‘stingiz qo‘shildi! +{paid} so‘m bonus."))
+        asyncio.ensure_future(tgapi.send_message(inviter, f"🎉 Do‘stingiz qo‘shildi! +{db.usd(paid)} $ bonus."))
     if user["banned"]:
         raise ApiError(403, "banned", "Hisobingiz bloklangan")
     is_admin = uid in config.ADMIN_IDS
@@ -78,7 +78,7 @@ async def api_me(c, d):
     return {
         "user": {"id": uid, "name": u["first_name"], "username": u["username"], "photo": u["photo"], "balance": u["balance"]},
         "stats": db.stats(uid, _i(d.get("days"), 7)),
-        "settings": {k: st[k] for k in ("min_withdraw", "withdraw_on", "ref_join_bonus", "ref_active_bonus", "ref_active_minutes", "som_per_100_coins", "paper_coin_per_percent", "paper_coin_per_kill", "slither_coin_per_point", "daily_cap", "tasks_on", "max_coins_per_min")},
+        "settings": {k: st[k] for k in ("min_withdraw", "withdraw_on", "ref_join_bonus", "ref_active_bonus", "ref_active_minutes", "paper_pct", "paper_kill", "slither_pt", "slither_kill", "daily_cap", "tasks_on", "max_per_min")},
         "cards": {g: (mm.get("card_" + g) or {}).get("ver", 0) for g in ("paperio", "slither")},
         "is_admin": c["is_admin"], "play_secs": u["play_secs"],
     }
@@ -105,7 +105,7 @@ async def api_game_finish(c, d):
     r = db.game_finish(c["uid"], _i(d.get("sid")), res)
     if r.get("friend_bonus"):
         inv, amt = r["friend_bonus"]
-        asyncio.ensure_future(tgapi.send_message(inv, f"✅ Do‘stingiz faol bo‘ldi! +{amt} so‘m bonus."))
+        asyncio.ensure_future(tgapi.send_message(inv, f"✅ Do‘stingiz faol bo‘ldi! +{db.usd(amt)} $ bonus."))
     r["friend_bonus"] = None
     return r
 
@@ -147,7 +147,7 @@ async def api_task_check(c, d):
             raise ApiError(400, "wait", f"Havolani ko‘rib chiqing, {wait} soniyadan keyin bosing")
     r = db.task_complete(uid, tid)
     if r["inviter"] and r["ref_bonus"]:
-        asyncio.ensure_future(tgapi.send_message(r["inviter"], f"✅ Do‘stingiz vazifani bajardi! +{r['ref_bonus']} so‘m bonus."))
+        asyncio.ensure_future(tgapi.send_message(r["inviter"], f"✅ Do‘stingiz vazifani bajardi! +{db.usd(r['ref_bonus'])} $ bonus."))
     return {"reward": r["reward"], "balance": db.get_user(uid)["balance"]}
 
 
@@ -158,7 +158,7 @@ async def api_wd_create(c, d):
     who = f"@{u['username']}" if u["username"] else (u["first_name"] or str(c["uid"]))
     kb = {"inline_keyboard": [[{"text": "✅ To‘landi", "callback_data": f"wd:ok:{r['id']}"}, {"text": "❌ Rad etish", "callback_data": f"wd:no:{r['id']}"}]]}
     for a in config.ADMIN_IDS:
-        asyncio.ensure_future(tgapi.send_message(a, f"💸 Yangi yechib olish #{r['id']}\n{who} (ID {c['uid']})\nSumma: {r['amount']} so‘m\nRekvizit: {d.get('details', '').strip()}", reply_markup=kb))
+        asyncio.ensure_future(tgapi.send_message(a, f"💸 Yangi yechib olish #{r['id']}\n{who} (ID {c['uid']})\nSumma: {db.usd(r['amount'])} $\nRekvizit: {d.get('details', '').strip()}", reply_markup=kb))
     return r
 
 
@@ -268,8 +268,8 @@ async def api_a_wds(c, d):
 async def resolve_withdrawal(wid: int, ok: bool, note: str = ""):
     """Admin panel ham, bot tugmalari ham shuni ishlatadi."""
     r = db.withdraw_resolve(wid, ok, note)
-    msg = (f"✅ Yechib olish so‘rovingiz bajarildi: {r['amount']} so‘m." if ok
-           else f"❌ Yechib olish so‘rovingiz rad etildi. {r['amount']} so‘m balansingizga qaytarildi." + (f"\nSabab: {note}" if note else ""))
+    msg = (f"✅ Yechib olish so‘rovingiz bajarildi: {db.usd(r['amount'])} $." if ok
+           else f"❌ Yechib olish so‘rovingiz rad etildi. {db.usd(r['amount'])} $ balansingizga qaytarildi." + (f"\nSabab: {note}" if note else ""))
     asyncio.ensure_future(tgapi.send_message(r["user_id"], msg))
     return r
 

@@ -16,9 +16,10 @@
 - **Sozlamalar**, **Vazifalar**, **Yechishlar**, **Foydalanuvchi**, **Xabar** — avvalgidek.
 
 ## Qoidalar
-- O'yindan daromad: o'yinda yig'ilgan **coin**ga qarab (daqiqaga emas). Paper.io: egallangan hudud foizi × (1% uchun coin) + o'ldirilganlar × (har biri uchun coin). Slither: yig'ilgan ochko × (1.00 ochko uchun coin). So'm = coin × kurs (100 coin = N so'm). Natija mijozdan keladi, shuning uchun server uni vaqt bo'yicha (daqiqasiga eng ko'p coin) va kunlik chegara bilan cheklaydi.
-- Do'st qo'shilsa: 300 so'm; faol bo'lsa (10 daqiqa o'ynasa): +700 so'm. Vazifalar: bajargan va taklif qilgan odamga alohida bonus.
-- Yechib olish: so'rov adminga keladi (bot tugmalari yoki panel); to'lovni admin o'zi amalga oshiradi. Rad etilsa balansga qaytadi.
+- Pul birligi — **$**, eng kichigi **0.0001 $** (bazada butun son: 10 000 birlik = 1 $). Ko'rsatish doim 4 xonali: `100.0001 $`.
+- O'yindan daromad (Admin → O'yinlar → «O'yin to'lovlari»): Paper.io — egallangan hudud har 1% uchun $ + o'ldirilgan raqib uchun $; Slither — har 1.00 ochko uchun $ + o'ldirilgan ilon uchun $. Natija mijozdan keladi, shuning uchun server uni vaqt bo'yicha (daqiqasiga eng ko'p $) va kunlik chegara bilan cheklaydi.
+- Do'st qo'shilsa va faol bo'lsa: admin belgilagan $ bonus. Vazifalar: bajargan va taklif qilgan odamga alohida bonus.
+- Yechib olish: so'rov adminga keladi; to'lovni admin o'zi amalga oshiradi. Rad etilsa balansga qaytadi.
 
 ## YouTube video tizimi (alohida modul)
 Fayllar: `video.js` (mijoz moduli, YouTube IFrame API), `videos.py` (baza va tartib qoidasi), `api.py` oxiridagi `videos/next` va `admin/video/*` yo'llari. O'yin kodiga faqat `pause`/`resume` xabarlari qo'shilgan.

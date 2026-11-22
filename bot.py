@@ -51,7 +51,7 @@ async def start(m: Message, command: CommandObject):
     _, is_new, inviter, paid = db.ensure_user(u.id, u.username or "", u.first_name or "", "", ref)
     if is_new and inviter and paid:
         try:
-            await m.bot.send_message(inviter, f"🎉 Do‘stingiz qo‘shildi! +{paid} so‘m bonus.")
+            await m.bot.send_message(inviter, f"🎉 Do‘stingiz qo‘shildi! +{db.usd(paid)} $ bonus.")
         except Exception:
             pass
     await send_welcome(m)

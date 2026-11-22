@@ -1,6 +1,6 @@
 """Ma'lumotlar bazasi va barcha hisob-kitob qoidalari (SQLite).
 
-Pul birligi — butun so'm. Balans faqat shu yerdagi funksiyalar orqali, bitta tranzaksiyada o'zgaradi va har bir o'zgarish `tx` jadvaliga yoziladi.
+Pul birligi — 0.0001 $ (butun son: 10 000 birlik = 1 $). Ko'rsatish: birlik / 10000, 4 xonali kasr. Balans faqat shu yerdagi funksiyalar orqali, bitta tranzaksiyada o'zgaradi va har bir o'zgarish `tx` jadvaliga yoziladi.
 O'yindan daromad — o'yinda yig'ilgan coinga qarab (Paper.io: egallangan hudud foizi va o'ldirilganlar; Slither: yeyilgan coinlar).
 Mijoz yuborgan natija server tomonida vaqt bo'yicha (daqiqasiga eng ko'p coin) va kunlik chegara bilan cheklanadi.
 """
@@ -12,27 +12,33 @@ from datetime import datetime, timedelta
 import config
 
 DEFAULTS = {
-    "min_withdraw": 20000,       # eng kam yechib olish (so'm)
+    "min_withdraw": 20000,       # eng kam yechib olish (0.0001 $ birlikda: 20000 = 2.0000 $)
     "withdraw_on": 1,            # yechib olish yoqilgan (1) / o'chiq (0)
-    "som_per_100_coins": 100,    # 100 coin necha so'm bo'ladi
-    "paper_coin_per_percent": 10,  # Paper.io: egallangan hududning har 1% uchun coin
-    "paper_coin_per_kill": 50,   # Paper.io: har bir o'ldirilgan raqib uchun coin
-    "slither_coin_per_point": 10,  # Slither: 1.00 ochko uchun coin (boshlang'ich 1.00 hisoblanmaydi)
-    "max_coins_per_min": 800,    # himoya: bir daqiqada olish mumkin bo'lgan eng ko'p coin
-    "daily_cap": 3000,           # bir kunda o'yindan olinadigan eng ko'p so'm
+    "paper_pct": 100,            # Paper.io: egallangan hududning har 1% uchun (100 = 0.0100 $)
+    "paper_kill": 500,           # Paper.io: har bir o'ldirilgan raqib uchun (500 = 0.0500 $)
+    "slither_pt": 100,           # Slither: 1.00 ochko uchun (boshlang'ich 1.00 hisoblanmaydi)
+    "slither_kill": 500,         # Slither: har bir o'ldirilgan ilon uchun
+    "max_per_min": 1500,         # himoya: bir daqiqada olish mumkin bo'lgan eng ko'p miqdor
+    "daily_cap": 30000,          # bir kunda o'yindan olinadigan eng ko'p miqdor
     "max_session_min": 20,       # bir o'yin seansida hisoblanadigan eng ko'p daqiqa
-    "ref_join_bonus": 300,       # do'st qo'shilganda taklif qilganga (so'm)
-    "ref_active_bonus": 700,     # do'st "faol" bo'lganda taklif qilganga (so'm)
+    "ref_join_bonus": 3000,      # do'st qo'shilganda taklif qilganga
+    "ref_active_bonus": 7000,    # do'st "faol" bo'lganda taklif qilganga
     "ref_active_minutes": 10,    # do'st shuncha daqiqa o'ynasa — faol hisoblanadi
     "tasks_on": 1,               # reklama/vazifalar bo'limi yoqilgan
     "link_wait_sec": 8,          # YouTube/Instagram havolasi ochilgach tekshirishgacha kutish
 }
-START_TEXT_DEFAULT = "Salom, {name}! 🎮 Paper.io va Slither o‘yinlarini tekin o‘ynang, o‘yinda yig‘gan coinlaringiz uchun so‘m oling va do‘stlaringizni taklif qiling."
+START_TEXT_DEFAULT = "Salom, {name}! 🎮 Paper.io va Slither o‘yinlarini tekin o‘ynang, o‘yinda yig‘gan $ larni yechib oling va do‘stlaringizni taklif qiling."
 MEDIA_KEYS = ("card_paperio", "card_slither", "start")     # admin yuklaydigan rasm/GIF'lar
 MEDIA_MAX_BYTES = 2_500_000
 KINDS_BONUS = ("ref_join", "ref_active", "ref_task")
 KINDS_FRIENDS = KINDS_BONUS
 MAX_SECS_PING_GAP = 90          # ping shu vaqtdan ko'p uzilsa — oradagi vaqt hisoblanmaydi
+
+
+def usd(n) -> str:
+    """0.0001 $ birlikni '12.3456' ko'rinishiga o'tkazadi."""
+    n = int(n)
+    return f"{'-' if n < 0 else ''}{abs(n) // 10000}.{abs(n) % 10000:04d}"
 
 
 class DbError(Exception):
@@ -274,18 +280,19 @@ def _clamp(v, lo, hi):
 def calc_coins(game: str, res, secs: int, st: dict) -> int:
     """O'yin natijasidan coin hisoblaydi.
     Paper.io: peak = eng ko'p egallangan hudud (promille, 0..1000), kills = o'ldirilgan raqiblar.
-    Slither: score = eng yuqori ochko × 10 (boshlang'ich 1.00 = 10 hisoblanmaydi).
+    Slither: score = eng yuqori ochko × 10 (boshlang'ich 1.00 = 10 hisoblanmaydi), kills = o'ldirilgan ilonlar.
     Natija mijozdan keladi, shuning uchun vaqt bo'yicha (daqiqasiga eng ko'p coin) cheklanadi."""
     if not isinstance(res, dict):
         return 0
     if game == "paperio":
         peak = _clamp(_int(res.get("peak")), 0, 1000)
         kills = _clamp(_int(res.get("kills")), 0, 100)
-        coins = peak * st["paper_coin_per_percent"] // 10 + kills * st["paper_coin_per_kill"]
+        coins = peak * st["paper_pct"] // 10 + kills * st["paper_kill"]
     else:
         score10 = _clamp(_int(res.get("score")), 0, 1_000_000)
-        coins = max(0, score10 - 10) * st["slither_coin_per_point"] // 10
-    return max(0, min(coins, secs * st["max_coins_per_min"] // 60))
+        kills = _clamp(_int(res.get("kills")), 0, 100)
+        coins = max(0, score10 - 10) * st["slither_pt"] // 10 + kills * st["slither_kill"]
+    return max(0, min(coins, secs * st["max_per_min"] // 60))
 
 
 def _load_res(raw):
@@ -304,7 +311,7 @@ def _clean_res(res):
 
 
 def _settle(con, sess, st, end_ts: float, res=None):
-    """Seansni yopadi. Vaqt serverdagi soat bo'yicha; coin — o'yin natijasidan (res), so'm = coin × kurs, kunlik chegara bilan."""
+    """Seansni yopadi. Vaqt serverdagi soat bo'yicha; coin — o'yin natijasidan (res), miqdor 0.0001 $ birlikda, kunlik chegara bilan."""
     secs = int(max(0, min(end_ts, now()) - sess["started"]))
     secs = min(secs, st["max_session_min"] * 60)
     uid = sess["user_id"]
@@ -314,14 +321,14 @@ def _settle(con, sess, st, end_ts: float, res=None):
     d = con.execute("SELECT earned FROM daily WHERE user_id=? AND day=?", (uid, day)).fetchone()
     got = d["earned"] if d else 0
     coins = calc_coins(sess["game"], res, secs, st)
-    som = coins * st["som_per_100_coins"] // 100
+    som = coins                               # coin = 0.0001 $ birlik
     earn = max(0, min(som, st["daily_cap"] - got))
     con.execute("UPDATE sessions SET status='done', secs=?, earned=?, coins=? WHERE id=?", (secs, earn, coins, sess["id"]))
     con.execute("INSERT INTO daily(user_id,day,secs,earned,coins) VALUES(?,?,?,?,?) ON CONFLICT(user_id,day) DO UPDATE SET secs=secs+excluded.secs, earned=earned+excluded.earned, coins=coins+excluded.coins",
                 (uid, day, secs, earn, coins))
     con.execute("UPDATE users SET play_secs = play_secs + ? WHERE user_id=?", (secs, uid))
     if earn > 0:
-        _credit(con, uid, earn, "game", f"{sess['game']} · {coins} coin")
+        _credit(con, uid, earn, "game", f"{sess['game']}")
     # do'st faol bo'ldimi?
     u = con.execute("SELECT play_secs, ref_by, active_paid FROM users WHERE user_id=?", (uid,)).fetchone()
     bonus_to = None

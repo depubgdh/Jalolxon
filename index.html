@@ -204,6 +204,21 @@ body.imm #fx{display:none}
 .prev.wide{aspect-ratio:auto;max-height:230px;object-fit:contain}
 .arow{display:flex;gap:12px;align-items:center}
 .field[type=file]{padding:9px 10px;font-size:13px}
+/* --- yengil rejim: orqa fon harakatsiz, faqat tugma/o'yin kartalari atrofida sokin yorug'lik --- */
+#fx i,#fx b{display:none!important}
+.glint,.chart .pulse,.imgw::after,#nav .pillbg::after{display:none!important}
+.pill.g,.ava,.chip,.empty,#nav .in,.imgw img,.bar i,.glass::after{animation:none}
+.glass::before{display:none}
+.glass.gc::before,.glass.ib::before{display:block;animation:spin 8s linear var(--d,0s) infinite}
+.glass.gc::after{animation:breathe 5s ease-in-out var(--d,0s) infinite;box-shadow:0 0 22px 1px rgba(62,230,192,.18),inset 0 0 18px rgba(62,230,192,.05)}
+.btn.p{animation:btnglow 3.6s ease-in-out infinite;box-shadow:0 0 16px rgba(62,230,192,.28)}
+@keyframes btnglow{50%{box-shadow:0 0 24px rgba(62,230,192,.45)}}
+.pg.in{animation:pgfade .22s ease backwards}
+.pg.in>*{animation:none}
+.pg.data>*{animation:none}
+.pg-out{animation:pgfade .12s ease reverse forwards}
+@keyframes pgfade{from{opacity:0}}
+.game{animation:none}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -317,7 +332,7 @@ let profName='',profPhoto='',myImg=null;
 const imgOK=()=>myImg&&myImg.complete&&myImg.naturalWidth>0;
 /* ---- ishlangan coin hisobi (asosiy ilova kurslarni yuboradi; to'lovni baribir server hisoblaydi) ---- */
 let pt=0,rates={pp:0,pk:0,mpm:0},lastSent='';
-const fmtN=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+const fmtN=n=>{n=Math.max(0,Math.round(n||0));return String(Math.floor(n/10000)).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+'.'+('0000'+n%10000).slice(-4)};
 function liveCoins(){
   const peak=Math.max(0,Math.min(1000,Math.round(best*10))),kills=Math.max(0,Math.min(100,me.kills|0));
   let c=Math.floor(peak*rates.pp/10)+kills*rates.pk;
@@ -900,11 +915,10 @@ addEventListener('resize',resize);resize();
 /* ---- profil ---- */
 let profName='Mehmon',top=[],mine={best:0};
 /* ---- ishlangan coin hisobi (asosiy ilova kurslarni yuboradi; to'lovni baribir server hisoblaydi) ---- */
-let rates={k:0,mpm:0},lastSent=-1;
-const fmtN=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+let rates={k:0,sk:0,mpm:0},lastSent='',myKills=0;
+const fmtN=n=>{n=Math.max(0,Math.round(n||0));return String(Math.floor(n/10000)).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+'.'+('0000'+n%10000).slice(-4)};
 function liveCoins(){
-  if(!rates.k)return 0;
-  let c=Math.floor(Math.max(0,Math.round(peak*10)-10)*rates.k/10);
+  let c=Math.floor(Math.max(0,Math.round(peak*10)-10)*rates.k/10)+Math.min(100,myKills)*rates.sk;
   if(rates.mpm)c=Math.min(c,Math.floor(t*rates.mpm/60));          /* serverdagi «daqiqasiga eng ko'p coin» himoyasi */
   return Math.max(0,c);
 }
@@ -940,7 +954,7 @@ function spawn(s){
   for(let i=0;i<n;i++)s.seg.push({x:bx-Math.cos(s.ang)*sp*i,y:by-Math.sin(s.ang)*sp*i});
 }
 function newRound(){
-  t=0;coins=[];drops=[];fx=[];peak=1;
+  t=0;coins=[];drops=[];fx=[];peak=1;myKills=0;
   for(let i=0;i<NCOIN;i++)coins.push(mkCoin(i%5!==0));
   snakes.forEach(s=>{s.alive=false});
   snakes.forEach(spawn);
@@ -1016,7 +1030,7 @@ function step(dt){
       if(o===s||!o.alive)continue;
       const ro=srad(o.score),lim=r*.7+ro*.85,span=o.seg.length*ro*.8+80;
       if(Math.abs(o.seg[0].x-h.x)>span&&Math.abs(o.seg[0].y-h.y)>span)continue;
-      for(let k=1;k<o.seg.length;k++){const ox=o.seg[k].x-h.x,oy=o.seg[k].y-h.y;if(ox*ox+oy*oy<lim*lim){kill(s,false);break}}
+      for(let k=1;k<o.seg.length;k++){const ox=o.seg[k].x-h.x,oy=o.seg[k].y-h.y;if(ox*ox+oy*oy<lim*lim){if(s.bot&&o===snakes[0])myKills++;kill(s,false);break}}
       if(!s.alive)break;
     }
   }
@@ -1127,7 +1141,7 @@ function drawMini(){
 function hud(){
   const me=snakes[0],left=Math.max(0,T_TOTAL-t);
   $('scv').textContent=fmtN(liveCoins());
-  if(state==='play'){const v=Math.round(peak*10);if(v!==lastSent){lastSent=v;sendUp({type:'progress',score:v})}}      /* chiqib ketilsa shu natija bo'yicha coin beriladi */
+  if(state==='play'){const v=Math.round(peak*10),q=v+'/'+myKills;if(q!==lastSent){lastSent=q;sendUp({type:'progress',score:v,kills:myKills})}}      /* chiqib ketilsa shu natija bo'yicha coin beriladi */
   $('tc').textContent=Math.floor(left/60)+':'+('0'+Math.floor(left%60)).slice(-2);$('tm').classList.toggle('low',left<60);
   $('warn').textContent=state==='play'&&me.alive&&me.out?'⚠ Zonadan tashqaridasiz! Ochko kamaymoqda':'';
   const rows=snakes.filter(s=>s.alive).sort((a,b)=>b.score-a.score).slice(0,6);
@@ -1139,20 +1153,20 @@ const legend='<div class="coins"><span><i style="background:#ff3e4e;color:#ff3e4
 function topHtml(){return top.length?'<div class="top"><b>🏆 Reyting</b>'+top.slice(0,5).map((r,i)=>`<div class="${r.me?'me':''}"><span>${i+1}. ${String(r.name).replace(/[<>&]/g,'')}</span><b>${(r.best/10).toFixed(1)}</b></div>`).join('')+'</div>':''}
 function menu(){
   state='menu';$('joy').classList.remove('on');
-  card.innerHTML=`<div class="logo">BULL <span>slither</span></div><div class="s">15 daqiqalik jang. Yarqiroq coinlarni yeb o‘sing — ko‘pi 0.01, kami 0.05 va 0.1. Zona toraya boradi: ichida ochkongiz o‘sib boradi, tashqarisida kamayadi. Faqat boshqa ilon tanasiga urilsangiz yoki ochko tugasa yutqazasiz. Joystik bilan boshqaring. Yig‘gan ochkolaringiz coinga, coin esa so‘mga aylanadi.</div>${legend}<button class="cb" id="go">O‘ynash</button>${mine.best?`<div class="s">Rekordingiz: <b>${(mine.best/10).toFixed(1)}</b></div>`:''}${topHtml()}<button class="cb g" id="ex">← Orqaga</button>`;
+  card.innerHTML=`<div class="logo">BULL <span>slither</span></div><div class="s">15 daqiqalik jang. Yarqiroq coinlarni yeb o‘sing — ko‘pi 0.01, kami 0.05 va 0.1. Zona toraya boradi: ichida ochkongiz o‘sib boradi, tashqarisida kamayadi. Faqat boshqa ilon tanasiga urilsangiz yoki ochko tugasa yutqazasiz. Joystik bilan boshqaring. Yig‘gan ochkolaringiz va o‘ldirgan ilonlaringiz uchun $ olasiz.</div>${legend}<button class="cb" id="go">O‘ynash</button>${mine.best?`<div class="s">Rekordingiz: <b>${(mine.best/10).toFixed(1)}</b></div>`:''}${topHtml()}<button class="cb g" id="ex">← Orqaga</button>`;
   $('ov').classList.remove('h');$('go').onclick=begin;$('ex').onclick=()=>sendUp({type:'exit'});
 }
 function over(){
   $('joy').classList.remove('on');
   const arr=snakes.filter(s=>s.alive||s.id===0).sort((a,b)=>b.score-a.score);rank=arr.indexOf(snakes[0])+1;
   const sc10=Math.round(peak*10);
-  sendUp({type:'end',score:sc10,why,rank});
+  sendUp({type:'end',score:sc10,kills:myKills,why,rank});
   const title=why==='time'?'🏁 15 daqiqa tugadi!':why==='zone'?'⚠ Zonada ochko tugadi':'💥 Ilon sizni urib yubordi';
   card.innerHTML=`<div class="t">${title}</div><div class="big">${peak.toFixed(2)}</div><div class="s">Eng yuqori ochko${why==='time'?' · O‘rningiz: '+rank+'/'+arr.length:''}<br>Omon qolgan vaqt: ${Math.floor(t/60)}:${('0'+Math.floor(t%60)).slice(-2)}</div>${why==='hit'?'<div class="s">Ochkolaringiz yerga yoyilib qoldi — botlar yeydi.</div>':''}<button class="cb" id="go">Qayta o‘ynash</button><button class="cb g" id="mn">Menyu</button>`;
   $('ov').classList.remove('h');$('go').onclick=begin;$('mn').onclick=menu;
 }
 function begin(){
-  lastSent=-1;sendUp({type:'begin'});newRound();state='play';$('ov').classList.add('h');$('joy').classList.add('on');
+  lastSent='';sendUp({type:'begin'});newRound();state='play';$('ov').classList.add('h');$('joy').classList.add('on');
   const me=snakes[0];me.name=profName;
 }
 /* ---- boshqaruv: joystik sozlamalari ---- */
@@ -1196,14 +1210,14 @@ addEventListener('pointermove',e=>{
   const dx=e.clientX-W/2,dy=e.clientY-H/2;if(Math.hypot(dx,dy)>24){aim=Math.atan2(dy,dx);jpad(dx*.3,dy*.3)}
 });
 addEventListener('contextmenu',e=>e.preventDefault());
-$('bk').onclick=()=>sendUp(state==='play'?{type:'exit',score:Math.round(peak*10)}:{type:'exit'});
+$('bk').onclick=()=>sendUp(state==='play'?{type:'exit',score:Math.round(peak*10),kills:myKills}:{type:'exit'});
 /* ---- ota ilova bilan aloqa ---- */
 addEventListener('message',e=>{
   const m=e.data;if(!m||typeof m!=='object')return;
   if(m.type==='safe'){const r=document.documentElement.style;r.setProperty('--st',(m.top||0)+'px');r.setProperty('--sb',(m.bottom||0)+'px')}
   else if(m.type==='pause')paused=true;           /* YouTube video moduli: video muammosida o'yinni to'xtatadi */
   else if(m.type==='resume')paused=false;
-  else if(m.type==='rates'){rates={k:+m.k||0,mpm:+m.mpm||0}}
+  else if(m.type==='rates'){rates={k:+m.k||0,sk:+m.sk||0,mpm:+m.mpm||0}}
   else if(m.type==='profile'){
     profName=(m.name||'Mehmon').toString().slice(0,14);snakes[0].name=profName;          /* rasm ishlatilmaydi — boshda ko'zlar */
   }else if(m.type==='earned'){const d=document.createElement('div');d.className='s';d.style.color='#8fe3a8';d.textContent=m.text||'';card.insertBefore(d,$('go'))}else if(m.type==='top'){top=m.top||[];mine=m.mine||mine;if(state==='menu')menu()}
@@ -1252,23 +1266,31 @@ sendUp({type:'ready'});
     else el.appendChild(typeof c === "object" ? c : document.createTextNode(String(c)));
   }
   function fmt(n) { n = Math.round(n || 0); var s = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " "); return (n < 0 ? "−" : "") + s; }
+  /* pul: 1 birlik = 0.0001 $ ; ko'rsatish har doim 4 xonali kasr bilan (masalan 100.0001) */
+  function usd(n) { n = Math.round(n || 0); var neg = n < 0; n = Math.abs(n); return (neg ? "−" : "") + String(Math.floor(n / 10000)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + "." + ("0000" + (n % 10000)).slice(-4); }
+  function units(v) { var x = parseFloat(String(v == null ? "" : v).replace(",", ".").replace(/\s/g, "")); return isFinite(x) ? Math.round(x * 10000) : 0; }
+  var MONEY_KEYS = { min_withdraw: 1, ref_join_bonus: 1, ref_active_bonus: 1, paper_pct: 1, paper_kill: 1, slither_pt: 1, slither_kill: 1, daily_cap: 1, max_per_min: 1 };
+  function setField(k, v) { return MONEY_KEYS[k] ? usd(v) : String(v); }
+  function setVal(k, el) { return MONEY_KEYS[k] ? units(el.value) : el.value; }
   function mins(secs) { var m = Math.floor(secs / 60), s = secs % 60; return m ? m + " daq " + (s ? s + " son" : "") : s + " son"; }
   function dt(ts) { var d = new Date(ts * 1000); return ("0" + d.getDate()).slice(-2) + "." + ("0" + (d.getMonth() + 1)).slice(-2) + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
   var toastT = 0;
   function toast(t) { var e = document.getElementById("toast"); e.textContent = t; e.style.display = "block"; clearTimeout(toastT); toastT = setTimeout(function () { e.style.display = "none"; }, 2600); }
   function haptic() { try { tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred("light"); } catch (e) {} }
-  function countUp(el, to, from) {
-    if (from == null || from === to) { el.textContent = fmt(to); return; }
-    el.textContent = fmt(from);
+  function countUp(el, to, from, fm) {
+    fm = fm || fmt;
+    if (from == null || from === to) { el.textContent = fm(to); return; }
+    el.textContent = fm(from);
     var t0 = performance.now(), dur = 1000;
     requestAnimationFrame(function step(t) {
       var p = Math.min(1, Math.max(0, (t - t0) / dur)), e = 1 - Math.pow(1 - p, 3);
-      el.textContent = fmt(from + (to - from) * e);
+      el.textContent = fm(from + (to - from) * e);
       if (p < 1 && el.isConnected) requestAnimationFrame(step);
-      else if (p < 1) el.textContent = fmt(to);
+      else if (p < 1) el.textContent = fm(to);
     });
   }
   function initFx() {
+    return;
     var f = document.getElementById("fx");
     for (var i = 0; i < 14; i++) {
       var b = document.createElement("b");
@@ -1382,7 +1404,7 @@ sendUp({type:'ready'});
       '<linearGradient id="la" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ee6c0" stop-opacity=".3"/><stop offset="1" stop-color="#3ee6c0" stop-opacity="0"/></linearGradient>' +
       '<filter id="gl" filterUnits="userSpaceOnUse" x="0" y="0" width="' + W + '" height="' + (H + 22) + '"><feGaussianBlur stdDeviation="3.5"/></filter></defs>' +
       '<line x1="' + pl + '" x2="' + (W - pr + 10) + '" y1="' + pt + '" y2="' + pt + '" stroke="rgba(255,255,255,.1)"/><line x1="' + pl + '" x2="' + (W - pr + 10) + '" y1="' + (H / 2) + '" y2="' + (H / 2) + '" stroke="rgba(255,255,255,.1)"/>' +
-      '<text x="' + (W) + '" y="' + (pt + 4) + '" fill="#8fa6a1" font-size="11" text-anchor="end">' + fmt(top) + '</text><text x="' + W + '" y="' + (H / 2 + 4) + '" fill="#8fa6a1" font-size="11" text-anchor="end">' + fmt(top / 2) + '</text>' +
+      '<text x="' + (W) + '" y="' + (pt + 4) + '" fill="#8fa6a1" font-size="11" text-anchor="end">' + usd(top) + '</text><text x="' + W + '" y="' + (H / 2 + 4) + '" fill="#8fa6a1" font-size="11" text-anchor="end">' + usd(top / 2) + '</text>' +
       '<path class="ar" d="' + area + '" fill="url(#la)"/>' +
       '<path class="ln" pathLength="1" d="' + d + '" fill="none" stroke="#3ee6c0" stroke-opacity=".7" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" filter="url(#gl)"/>' +
       '<path class="ln" pathLength="1" d="' + d + '" fill="none" stroke="url(#lg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' +
@@ -1410,18 +1432,18 @@ sendUp({type:'ready'});
       return h("button", { class: S.days === n ? "on" : "", onclick: function () { S.days = n; api("stats", { days: n }).then(function (d) { S.me.stats = d; render(); }); } }, n + " kun");
     }));
     var capLeft = Math.max(0, cfg.daily_cap - st.today_earned);
-    var num = h("span", { class: "num" }, fmt(u.balance));
-    countUp(num, u.balance, S.shown == null ? 0 : S.shown); S.shown = u.balance;
+    var num = h("span", { class: "num" }, usd(u.balance));
+    countUp(num, u.balance, S.shown == null ? 0 : S.shown, usd); S.shown = u.balance;
     page.appendChild(h("div", { class: "glass bal" },
-      h("div", { class: "balrow" }, h("div", null, h("div", { class: "lab" }, "Asosiy balans"), h("div", { class: "big" }, num, h("small", null, "so‘m"))), seg),
-      h("div", { class: "pills" }, h("div", { class: "pill g" }, "↗ +" + fmt(st.today_earned) + " so‘m bugun"), h("div", { class: "pill" }, "🪙 " + fmt(st.today_coins || 0) + " coin bugun")),
+      h("div", { class: "balrow" }, h("div", null, h("div", { class: "lab" }, "Asosiy balans"), h("div", { class: "big" }, num, h("small", null, "$"))), seg),
+      h("div", { class: "pills" }, h("div", { class: "pill g" }, "↗ +" + usd(st.today_earned) + " $ bugun")),
       h("div", { html: chartSvg(st.series) }), h("i", { class: "glint" })));
     page.appendChild(h("div", { class: "sec" }, "O‘yinlar"));
     page.appendChild(h("div", { class: "games" }, [["paperio", "Paper.io"], ["slither", "Slither.io"]].map(function (g) {
-      return h("button", { class: "glass gc", onclick: function () { haptic(); startGame(g[0]); } }, h("div", { class: "imgw" }, h("img", { src: cardSrc(g[0]), alt: g[1] })), h("b", null, g[1]), h("span", null, "Tekin · 100🪙 = " + fmt(cfg.som_per_100_coins) + " so‘m"));
+      return h("button", { class: "glass gc", onclick: function () { haptic(); startGame(g[0]); } }, h("div", { class: "imgw" }, h("img", { src: cardSrc(g[0]), alt: g[1] })), h("b", null, g[1]), h("span", null, "Tekin · o‘ynang va $ ishlang"));
     })));
-    page.appendChild(h("div", { class: "cap" }, "Bugun o‘yindan yana " + fmt(capLeft) + " so‘m ishlashingiz mumkin (kunlik chegara " + fmt(cfg.daily_cap) + " so‘m). Daromad o‘yinda yig‘gan coinlaringizga qarab hisoblanadi."));
-    page.appendChild(h("div", { class: "cap" }, "Paper.io: egallangan hududning har 1% — " + fmt(cfg.paper_coin_per_percent) + " coin, har o‘ldirilgan raqib — " + fmt(cfg.paper_coin_per_kill) + " coin. Slither: har 1.00 ochko — " + fmt(cfg.slither_coin_per_point) + " coin."));
+    page.appendChild(h("div", { class: "cap" }, "Bugun o‘yindan yana " + usd(capLeft) + " $ ishlashingiz mumkin (kunlik chegara " + usd(cfg.daily_cap) + " $). Daromad o‘yindagi natijangizga qarab hisoblanadi."));
+    page.appendChild(h("div", { class: "cap" }, "Paper.io: egallangan hududning har 1% — " + usd(cfg.paper_pct) + " $, har o‘ldirilgan raqib — " + usd(cfg.paper_kill) + " $. Slither: har 1.00 ochko — " + usd(cfg.slither_pt) + " $, har o‘ldirilgan ilon — " + usd(cfg.slither_kill) + " $."));
     return page;
   }
 
@@ -1440,7 +1462,7 @@ sendUp({type:'ready'});
     page.appendChild(h("div", { class: "row2" },
       h("button", { class: "btn", onclick: function () { copy(b.link); } }, "⧉ Nusxa"),
       h("button", { class: "btn p", onclick: function () { share(b.link); } }, "⬆ Ulashish")));
-    page.appendChild(h("div", { class: "note" }, "👥 Cheklov yo‘q: havolangiz orqali kirgan har bir yangi Telegram akkaunt uchun +" + fmt(b.rules.ref_join_bonus) + " so‘m. Do‘st " + b.rules.ref_active_minutes + " daqiqa o‘ynab faol bo‘lsa, yana +" + fmt(b.rules.ref_active_bonus) + " so‘m. Do‘stlardan jami topilgan: " + fmt(r.earned) + " so‘m."));
+    page.appendChild(h("div", { class: "note" }, "👥 Cheklov yo‘q: havolangiz orqali kirgan har bir yangi Telegram akkaunt uchun +" + usd(b.rules.ref_join_bonus) + " $. Do‘st " + b.rules.ref_active_minutes + " daqiqa o‘ynab faol bo‘lsa, yana +" + usd(b.rules.ref_active_bonus) + " $. Do‘stlardan jami topilgan: " + usd(r.earned) + " $."));
     if (b.tasks.length) {
       page.appendChild(h("div", { class: "sec" }, "Vazifalar"));
       page.appendChild(h("div", { class: "note", style: "margin-top:-6px" }, "Vazifani bajarsangiz bonus olasiz, taklif qilgan odamingizga ham bonus beriladi."));
@@ -1449,7 +1471,7 @@ sendUp({type:'ready'});
         if (t.done) act = h("span", { class: "chip ok" }, "✓ Bajarildi");
         else if (!t.opened && t.kind !== "telegram") act = h("button", { class: "btn p s", onclick: function () { openTask(t); } }, "Ochish");
         else act = h("div", { style: "display:flex;gap:6px" }, h("button", { class: "btn s", onclick: function () { openTask(t); } }, "Ochish"), h("button", { class: "btn p s", onclick: function () { checkTask(t); } }, "Tekshirish"));
-        page.appendChild(h("div", { class: "glass task" }, h("div", { class: "ic" }, KIND_IC[t.kind] || "🔗"), h("div", { class: "tx" }, h("b", null, t.title), h("small", null, t.reward ? "+" + fmt(t.reward) + " so‘m" : "Do‘stingiz uchun bonus")), act));
+        page.appendChild(h("div", { class: "glass task" }, h("div", { class: "ic" }, KIND_IC[t.kind] || "🔗"), h("div", { class: "tx" }, h("b", null, t.title), h("small", null, t.reward ? "+" + usd(t.reward) + " $" : "Do‘stingiz uchun bonus")), act));
       });
     }
     return page;
@@ -1461,7 +1483,7 @@ sendUp({type:'ready'});
   }
   function share(link) {
     if (!link) return;
-    var u = "https://t.me/share/url?url=" + encodeURIComponent(link) + "&text=" + encodeURIComponent("🎮 Paper.io va Slither o‘ynab so‘m ishlang!");
+    var u = "https://t.me/share/url?url=" + encodeURIComponent(link) + "&text=" + encodeURIComponent("🎮 Paper.io va Slither o‘ynab $ ishlang!");
     try { if (tg && tg.openTelegramLink) return tg.openTelegramLink(u); } catch (e) {}
     window.open(u, "_blank");
   }
@@ -1469,7 +1491,7 @@ sendUp({type:'ready'});
     api("task/open", { id: t.id }).then(function (d) { t.opened = true; openLink(d.url); render(); }).catch(function (e) { toast(e.message); });
   }
   function checkTask(t) {
-    api("task/check", { id: t.id }).then(function (d) { t.done = true; applyBalance(d.balance); toast(d.reward ? "+" + fmt(d.reward) + " so‘m ✓" : "Bajarildi ✓"); S.bonus = null; render(); }).catch(function (e) { toast(e.message); });
+    api("task/check", { id: t.id }).then(function (d) { t.done = true; applyBalance(d.balance); toast(d.reward ? "+" + usd(d.reward) + " $ ✓" : "Bajarildi ✓"); S.bonus = null; render(); }).catch(function (e) { toast(e.message); });
   }
 
   /* ---------- YECHISH ---------- */
@@ -1477,15 +1499,15 @@ sendUp({type:'ready'});
     var page = h("div"), cfg = S.me.settings, bal = S.me.user.balance;
     page.appendChild(head("Yechib olish"));
     var pct = Math.min(100, Math.round(bal / Math.max(1, cfg.min_withdraw) * 100)), ready = bal >= cfg.min_withdraw;
-    page.appendChild(h("div", { class: "glass bal" }, h("div", { class: "lab" }, "Mavjud"), h("div", { class: "big" }, fmt(bal), h("small", null, "so‘m")),
+    page.appendChild(h("div", { class: "glass bal" }, h("div", { class: "lab" }, "Mavjud"), h("div", { class: "big" }, usd(bal), h("small", null, "$")),
       h("div", { class: "bar" }, h("i", { style: "width:" + pct + "%" })),
-      h("div", { class: "note", style: "margin:0" }, ready ? "Yechishga tayyor · minimal summa " + fmt(cfg.min_withdraw) + " so‘m" : "Yechish uchun yana " + fmt(cfg.min_withdraw - bal) + " so‘m kerak · minimal " + fmt(cfg.min_withdraw) + " so‘m")));
+      h("div", { class: "note", style: "margin:0" }, ready ? "Yechishga tayyor · minimal summa " + usd(cfg.min_withdraw) + " $" : "Yechish uchun yana " + usd(cfg.min_withdraw - bal) + " $ kerak · minimal " + usd(cfg.min_withdraw) + " $")));
     if (!cfg.withdraw_on) { page.appendChild(h("div", { class: "note" }, "⛔ Yechib olish vaqtincha o‘chirilgan.")); return page; }
-    var amount = h("input", { class: "field", type: "number", inputmode: "numeric", placeholder: "Summa (so‘m)", value: ready ? String(bal) : "" });
+    var amount = h("input", { class: "field", type: "text", inputmode: "decimal", placeholder: "Summa ($, masalan 2.5000)", value: ready ? usd(bal) : "" });
     var det = h("input", { class: "field", type: "text", placeholder: "Karta raqami yoki hamyon", maxlength: "120", style: "margin-top:10px" });
     var btn = h("button", { class: "btn p", style: "margin-top:12px", onclick: function () {
       if (S.busy) return; S.busy = true; btn.disabled = true;
-      api("withdraw/create", { amount: amount.value, details: det.value }).then(function (d) { applyBalance(d.balance); toast("So‘rov yuborildi ✓"); S.wds = null; S.busy = false; render(); })
+      api("withdraw/create", { amount: units(amount.value), details: det.value }).then(function (d) { applyBalance(d.balance); toast("So‘rov yuborildi ✓"); S.wds = null; S.busy = false; render(); })
         .catch(function (e) { S.busy = false; btn.disabled = false; toast(e.message); });
     } }, "Yechib olish");
     page.appendChild(h("div", { class: "glass", style: "padding:16px" }, h("div", { class: "lbl", style: "margin-top:0" }, "Yechib olish summasi"), amount, det, btn));
@@ -1493,7 +1515,7 @@ sendUp({type:'ready'});
     if (!S.wds) { api("withdraw/list").then(function (d) { S.wds = d.items; if (S.tab === "withdraw" && !S.view) render("data"); }).catch(function () {}); }
     else if (S.wds.length) {
       page.appendChild(h("div", { class: "sec" }, "So‘rovlarim"));
-      S.wds.forEach(function (w) { page.appendChild(h("div", { class: "hrow" }, h("div", { class: "ic" }, "💸"), h("div", { class: "t" }, h("b", null, fmt(w.amount) + " so‘m", statusChip(w.status)), h("small", null, dt(w.created_at))))); });
+      S.wds.forEach(function (w) { page.appendChild(h("div", { class: "hrow" }, h("div", { class: "ic" }, "💸"), h("div", { class: "t" }, h("b", null, usd(w.amount) + " $", statusChip(w.status)), h("small", null, dt(w.created_at))))); });
     }
     return page;
   }
@@ -1511,12 +1533,12 @@ sendUp({type:'ready'});
     if (!S.hist) { api("history", { filter: S.hflt }).then(function (d) { S.hist = d; if (S.tab === "history" && !S.view) render("data"); }).catch(function (e) { toast(e.message); }); page.appendChild(h("div", { class: "empty" }, "Yuklanmoqda…")); return page; }
     var d = S.hist;
     if (S.hflt === "bonus") page.appendChild(h("div", { class: "two" },
-      h("div", { class: "glass stat" }, h("div", { class: "note", style: "margin:0" }, "O‘yinlardan jami"), h("div", { class: "n g" }, fmt(d.totals.games))),
-      h("div", { class: "glass stat" }, h("div", { class: "note", style: "margin:0" }, "Do‘stlardan jami"), h("div", { class: "n g" }, fmt(d.totals.friends)))));
+      h("div", { class: "glass stat" }, h("div", { class: "note", style: "margin:0" }, "O‘yinlardan jami"), h("div", { class: "n g" }, usd(d.totals.games) + " $")),
+      h("div", { class: "glass stat" }, h("div", { class: "note", style: "margin:0" }, "Do‘stlardan jami"), h("div", { class: "n g" }, usd(d.totals.friends) + " $"))));
     if (!d.items.length) page.appendChild(h("div", { class: "empty" }, "Hozircha yozuv yo‘q."));
     d.items.forEach(function (it) {
       var k = KL[it.kind] || ["•", it.kind];
-      page.appendChild(h("div", { class: "hrow" }, h("div", { class: "ic" }, k[0]), h("div", { class: "t" }, h("b", null, k[1], it.status ? statusChip(it.status) : null), h("small", null, (it.note ? it.note + " · " : "") + dt(it.created_at))), h("div", { class: "a " + (it.amount >= 0 ? "p" : "m") }, (it.amount >= 0 ? "+" : "") + fmt(it.amount))));
+      page.appendChild(h("div", { class: "hrow" }, h("div", { class: "ic" }, k[0]), h("div", { class: "t" }, h("b", null, k[1], it.status ? statusChip(it.status) : null), h("small", null, (it.note ? it.note + " · " : "") + dt(it.created_at))), h("div", { class: "a " + (it.amount >= 0 ? "p" : "m") }, (it.amount >= 0 ? "+" : "") + usd(it.amount) + " $")));
     });
     return page;
   }
@@ -1571,7 +1593,7 @@ sendUp({type:'ready'});
       if (!sid || sid < 0) return Promise.resolve(null);
       return api("game/finish", { sid: sid, result: res || null }).then(function (r) {
         applyBalance(r.balance);
-        if (S.me) { var s = S.me.stats; s.today_earned += r.earned; s.today_secs += r.secs; s.today_coins = (s.today_coins || 0) + r.coins; s.series[s.series.length - 1].earned += r.earned; }
+        if (S.me) { var s = S.me.stats; s.today_earned += r.earned; s.today_secs += r.secs; s.series[s.series.length - 1].earned += r.earned; }
         return r;
       }).catch(function () { return null; });
     }
@@ -1586,12 +1608,12 @@ sendUp({type:'ready'});
     function cleanup() { try { if (tg && tg.enableVerticalSwipes) tg.enableVerticalSwipes(); } catch (e) {} window.removeEventListener("message", onMsg); clearInterval(G.timer); if (vc) vc.destroy(); root.remove(); try { tg && tg.BackButton && tg.BackButton.hide(); } catch (e) {} }
     function resultLine(r) {
       if (!r) return "";
-      return "🪙 " + fmt(r.coins) + " coin · +" + fmt(r.earned) + " so‘m" + (r.capped ? " (kunlik chegara)" : "");
+      return "+" + usd(r.earned) + " $" + (r.capped ? " (kunlik chegara)" : "");
     }
     function paintMenu() {
       menu.textContent = "";
       menu.appendChild(h("div", { class: "gcard" }, h("div", { class: "l" }, "BULL ", h("span", null, "paper.io")),
-        h("div", { class: "s" }, "Hududingizni kengaytiring: o‘z yeringizdan chiqing, izni yopib qaytsangiz — o‘ralgan maydon sizniki. Dushman izini kessangiz u yutqazadi. Tekin: egallagan hududingiz va o‘ldirgan raqiblaringiz uchun coin yig‘asiz, coin so‘mga aylanadi."),
+        h("div", { class: "s" }, "Hududingizni kengaytiring: o‘z yeringizdan chiqing, izni yopib qaytsangiz — o‘ralgan maydon sizniki. Dushman izini kessangiz u yutqazadi. Tekin: egallagan hududingiz va o‘ldirgan raqiblaringiz uchun $ yig‘asiz."),
         h("button", { class: "gb", onclick: function (ev) {
           if (G.busy) return; G.busy = true; haptic();
           var b = ev.currentTarget; b.textContent = vc && !G.vOn ? "Video yuklanmoqda…" : "O‘ynash";
@@ -1612,7 +1634,7 @@ sendUp({type:'ready'});
       over.appendChild(h("div", { class: "gcard" }, h("div", { class: "l", style: "font-size:24px" }, won ? "🏆 G‘alaba!" : "💥 Yutqazdingiz"),
         m && m.cause ? h("div", { class: "s" }, m.cause) : null,
         m ? h("div", { class: "s" }, "Eng ko‘p hudud: " + ((m.peak || 0) / 10).toFixed(1) + "% · O‘ldirdingiz: " + (m.kills || 0)) : null,
-        r ? h("div", { class: "e" }, "+" + fmt(r.earned) + " so‘m") : h("div", { class: "s" }, "Hisoblanmoqda…"),
+        r ? h("div", { class: "e" }, "+" + usd(r.earned) + " $") : h("div", { class: "s" }, "Hisoblanmoqda…"),
         r ? h("div", { class: "s" }, resultLine(r)) : null,
         h("button", { class: "gb", onclick: function () { over.classList.remove("show"); menu.classList.add("show"); } }, "Yana o‘ynash"),
         h("button", { class: "gb g", onclick: function () { leave(); } }, "Bosh sahifa")));
@@ -1624,18 +1646,18 @@ sendUp({type:'ready'});
       if (m.type === "ready") {
         send(Object.assign({ type: "safe" }, pioSafe()));
         var cs = (S.me && S.me.settings) || {};      /* o'yin ichidagi «$ ishlagan coin» hisoblagichi shu kurslar bo'yicha hisoblaydi */
-        send({ type: "rates", pp: +cs.paper_coin_per_percent || 0, pk: +cs.paper_coin_per_kill || 0, k: +cs.slither_coin_per_point || 0, mpm: +cs.max_coins_per_min || 0 });
+        send({ type: "rates", pp: +cs.paper_pct || 0, pk: +cs.paper_kill || 0, k: +cs.slither_pt || 0, sk: +cs.slither_kill || 0, mpm: +cs.max_per_min || 0 });
         if (!isPaper) send({ type: "profile", name: u.first_name || "Mehmon", photo: u.photo_url || "" });
       } else if (m.type === "progress") {
-        G.last = isPaper ? { peak: m.peak, kills: m.kills } : { score: m.score };
+        G.last = isPaper ? { peak: m.peak, kills: m.kills } : { score: m.score, kills: m.kills || 0 };
       } else if (m.type === "begin") {
         G.last = null; begin();
         if (!isPaper) { if (vc && !G.vOn) send({ type: "pause" }); launch(function () { send({ type: "resume" }); }); }     /* Slither: o'yin o'zi boshlaydi — video PLAYING bo'lguncha pauza */
       }
       else if (m.type === "end") {
         if (isPaper) { paintOver(m, null); finish({ peak: m.peak, kills: m.kills }).then(function (r) { paintOver(m, r); }); }
-        else finish({ score: m.score }).then(function (r) { if (r) send({ type: "earned", text: "💰 " + resultLine(r) }); });
-      } else if (m.type === "exit") leave(isPaper ? { peak: m.peak, kills: m.kills } : { score: m.score });
+        else finish({ score: m.score, kills: m.kills || 0 }).then(function (r) { if (r) send({ type: "earned", text: "💰 " + resultLine(r) }); });
+      } else if (m.type === "exit") leave(isPaper ? { peak: m.peak, kills: m.kills } : { score: m.score, kills: m.kills || 0 });
     }
     window.addEventListener("message", onMsg);
     if (isPaper) paintMenu();
@@ -1691,7 +1713,7 @@ sendUp({type:'ready'});
     function reload(d) { A.data = d; A.dataTab = T; render(); }
     if (T === "stat") need("admin/overview", {}, function (o) {
       var rows = [["Foydalanuvchilar", o.users], ["Bugun yangi", o.new_today], ["Bugun faol", o.active_today], ["Referal orqali kirgan", o.referred], ["Jami o‘ynalgan soat", o.play_hours],
-        ["Bugun o‘yindan berildi", fmt(o.earned_today) + " so‘m"], ["Foydalanuvchilar balansi (qarz)", fmt(o.balances) + " so‘m"], ["Kutilayotgan yechishlar", o.pending_count + " ta · " + fmt(o.pending_sum) + " so‘m"], ["Jami to‘langan", fmt(o.paid_total) + " so‘m"]];
+        ["Bugun o‘yindan berildi", usd(o.earned_today) + " $"], ["Foydalanuvchilar balansi (qarz)", usd(o.balances) + " $"], ["Kutilayotgan yechishlar", o.pending_count + " ta · " + usd(o.pending_sum) + " $"], ["Jami to‘langan", usd(o.paid_total) + " $"]];
       rows.forEach(function (r) { body.appendChild(h("div", { class: "hrow" }, h("div", { class: "t" }, h("b", null, r[0])), h("div", { class: "a p" }, String(r[1])))); });
     });
     else if (T === "wd") {
@@ -1701,7 +1723,7 @@ sendUp({type:'ready'});
         if (!d.items.length) body.appendChild(h("div", { class: "empty" }, "Bo‘sh"));
         d.items.forEach(function (w) {
           var who = w.username ? "@" + w.username : (w.first_name || w.user_id);
-          body.appendChild(h("div", { class: "glass", style: "padding:14px;margin-bottom:10px" }, h("b", null, "#" + w.id + " · " + fmt(w.amount) + " so‘m"), h("div", { class: "note", style: "margin:4px 0" }, who + " (ID " + w.user_id + ")"),
+          body.appendChild(h("div", { class: "glass", style: "padding:14px;margin-bottom:10px" }, h("b", null, "#" + w.id + " · " + usd(w.amount) + " $"), h("div", { class: "note", style: "margin:4px 0" }, who + " (ID " + w.user_id + ")"),
             h("div", { class: "linkbox", style: "margin:6px 0" }, w.details), h("div", { class: "note", style: "margin:0 0 8px" }, dt(w.created_at)),
             st === "pending" ? h("div", { class: "row2" },
               h("button", { class: "btn p s", style: "width:100%", onclick: function () { if (confirm("To‘langan deb belgilansinmi?")) api("admin/withdraw/resolve", { id: w.id, ok: true }).then(function () { A.data = null; render(); toast("Belgilandi ✓"); }).catch(function (e) { toast(e.message); }); } }, "✅ To‘landi"),
@@ -1720,12 +1742,13 @@ sendUp({type:'ready'});
               mt ? h("button", { class: "btn d s", style: "width:100%", onclick: function () { dropMedia(k); } }, "Standart") : h("span")))));
       });
       body.appendChild(box);
-      var L = [["som_per_100_coins", "100 coin necha so‘m bo‘ladi", "so‘m"], ["paper_coin_per_percent", "Paper.io: egallangan hududning har 1% uchun", "coin"], ["paper_coin_per_kill", "Paper.io: har bir o‘ldirilgan odam uchun", "coin"],
-        ["slither_coin_per_point", "Slither: har 1.00 ochko uchun", "coin"], ["daily_cap", "Kunlik o‘yin chegarasi", "so‘m / kun"], ["max_session_min", "Bir seansda hisoblanadigan eng ko‘p vaqt", "daqiqa"], ["max_coins_per_min", "Himoya: daqiqasiga eng ko‘p coin", "coin / daqiqa"]];
-      var inputs = {}, card = h("div", { class: "glass", style: "padding:16px" }, h("b", null, "🪙 Ochko va coin hisobi"));
-      card.appendChild(h("div", { class: "note", style: "margin:4px 0 12px" }, "Paper.io ochkosi = hudud foizi × (1% uchun coin) + o‘ldirilganlar × (har biri uchun coin). Masalan: 30% hudud va 2 ta o‘ldirish = 30×" + d.settings.paper_coin_per_percent + " + 2×" + d.settings.paper_coin_per_kill + " = " + (30 * d.settings.paper_coin_per_percent + 2 * d.settings.paper_coin_per_kill) + " coin."));
-      L.forEach(function (r) { var i = h("input", { class: "field sm", type: "number", inputmode: "numeric", value: String(d.settings[r[0]]) }); inputs[r[0]] = i; card.appendChild(h("div", { class: "srow" }, h("label", null, r[1], h("small", null, r[2])), i)); });
-      card.appendChild(h("button", { class: "btn p", onclick: function () { var v = {}; for (var k in inputs) v[k] = inputs[k].value; api("admin/settings/save", { values: v }).then(function (r) { d.settings = r.settings; if (S.me) Object.assign(S.me.settings, r.settings); A.data = d; toast("Saqlandi ✓"); render("data"); }).catch(function (e) { toast(e.message); }); } }, "Saqlash"));
+      var L = [["paper_pct", "Paper.io: egallangan hududning har 1% uchun", "$"], ["paper_kill", "Paper.io: har bir o‘ldirilgan odam uchun", "$"],
+        ["slither_pt", "Slither: har 1.00 ochko uchun", "$"], ["slither_kill", "Slither: har bir o‘ldirilgan ilon uchun", "$"], ["daily_cap", "Kunlik o‘yin chegarasi", "$ / kun"], ["max_session_min", "Bir seansda hisoblanadigan eng ko‘p vaqt", "daqiqa"], ["max_per_min", "Himoya: daqiqasiga eng ko‘p ishlash", "$ / daqiqa"]];
+      var inputs = {}, card = h("div", { class: "glass", style: "padding:16px" }, h("b", null, "💵 O‘yin to‘lovlari ($)"));
+      var ds = d.settings;
+      card.appendChild(h("div", { class: "note", style: "margin:4px 0 12px" }, "Miqdorlarni dollarda kiriting, eng kichigi 0.0001 $. Masalan, Paper.io: 30% hudud va 2 ta o‘ldirish = 30×" + usd(ds.paper_pct) + " + 2×" + usd(ds.paper_kill) + " = " + usd(30 * ds.paper_pct + 2 * ds.paper_kill) + " $."));
+      L.forEach(function (r) { var i = h("input", { class: "field sm", type: "text", inputmode: "decimal", value: setField(r[0], d.settings[r[0]]) }); inputs[r[0]] = i; card.appendChild(h("div", { class: "srow" }, h("label", null, r[1], h("small", null, r[2])), i)); });
+      card.appendChild(h("button", { class: "btn p", onclick: function () { var v = {}; for (var k in inputs) v[k] = setVal(k, inputs[k]); api("admin/settings/save", { values: v }).then(function (r) { d.settings = r.settings; if (S.me) Object.assign(S.me.settings, r.settings); A.data = d; toast("Saqlandi ✓"); render("data"); }).catch(function (e) { toast(e.message); }); } }, "Saqlash"));
       body.appendChild(card);
     });
     else if (T === "videos") need("admin/videos", {}, function (d) {
@@ -1779,23 +1802,23 @@ sendUp({type:'ready'});
         h("div", { class: "note", style: "margin:0" }, "Telegramda rasm tagidagi matn 1000 belgigacha bo‘lishi kerak; undan uzun bo‘lsa matn rasmdan keyin alohida xabar bo‘lib ketadi.")));
     });
     else if (T === "set") need("admin/settings", {}, function (d) {
-      var L = [["min_withdraw", "Eng kam yechib olish", "so‘m"], ["withdraw_on", "Yechib olish yoqilgan", "1 = ha, 0 = yo‘q"], ["ref_join_bonus", "Do‘st qo‘shilganda bonus", "so‘m"], ["ref_active_bonus", "Do‘st faol bo‘lganda bonus", "so‘m"], ["ref_active_minutes", "Faol hisoblash uchun o‘yin vaqti", "daqiqa"], ["tasks_on", "Vazifalar (reklama) yoqilgan", "1 = ha, 0 = yo‘q"], ["link_wait_sec", "Havola ochilgach kutish", "soniya"]];
+      var L = [["min_withdraw", "Eng kam yechib olish", "$"], ["withdraw_on", "Yechib olish yoqilgan", "1 = ha, 0 = yo‘q"], ["ref_join_bonus", "Do‘st qo‘shilganda bonus", "$"], ["ref_active_bonus", "Do‘st faol bo‘lganda bonus", "$"], ["ref_active_minutes", "Faol hisoblash uchun o‘yin vaqti", "daqiqa"], ["tasks_on", "Vazifalar (reklama) yoqilgan", "1 = ha, 0 = yo‘q"], ["link_wait_sec", "Havola ochilgach kutish", "soniya"]];
       var inputs = {};
       var card = h("div", { class: "glass", style: "padding:16px" });
-      L.forEach(function (r) { var i = h("input", { class: "field sm", type: "number", inputmode: "numeric", value: String(d.settings[r[0]]) }); inputs[r[0]] = i; card.appendChild(h("div", { class: "srow" }, h("label", null, r[1], h("small", null, r[2])), i)); });
-      card.appendChild(h("button", { class: "btn p", onclick: function () { var v = {}; for (var k in inputs) v[k] = inputs[k].value; api("admin/settings/save", { values: v }).then(function (r) { A.data = r; toast("Saqlandi ✓"); if (S.me) { S.me.settings = Object.assign(S.me.settings, r.settings); } render(); }).catch(function (e) { toast(e.message); }); } }, "Saqlash"));
+      L.forEach(function (r) { var i = h("input", { class: "field sm", type: "text", inputmode: "decimal", value: setField(r[0], d.settings[r[0]]) }); inputs[r[0]] = i; card.appendChild(h("div", { class: "srow" }, h("label", null, r[1], h("small", null, r[2])), i)); });
+      card.appendChild(h("button", { class: "btn p", onclick: function () { var v = {}; for (var k in inputs) v[k] = setVal(k, inputs[k]); api("admin/settings/save", { values: v }).then(function (r) { A.data = r; toast("Saqlandi ✓"); if (S.me) { S.me.settings = Object.assign(S.me.settings, r.settings); } render(); }).catch(function (e) { toast(e.message); }); } }, "Saqlash"));
       body.appendChild(card);
     });
     else if (T === "tasks") need("admin/tasks", {}, function (d) {
       var f = { kind: h("select", { class: "field sm" }, [["telegram", "Telegram kanal/guruh"], ["youtube", "YouTube"], ["instagram", "Instagram"], ["link", "Boshqa havola"]].map(function (o) { return h("option", { value: o[0] }, o[1]); })),
         title: h("input", { class: "field sm", placeholder: "Sarlavha" }), url: h("input", { class: "field sm", placeholder: "Havola (https://...)" }), chat: h("input", { class: "field sm", placeholder: "Telegram: @kanal yoki -100... ID" }),
-        reward: h("input", { class: "field sm", type: "number", placeholder: "Bajargan odamga (so‘m)" }), ref_bonus: h("input", { class: "field sm", type: "number", placeholder: "Taklif qilganga bonus (so‘m)" }) };
+        reward: h("input", { class: "field sm", type: "text", inputmode: "decimal", placeholder: "Bajargan odamga ($)" }), ref_bonus: h("input", { class: "field sm", type: "text", inputmode: "decimal", placeholder: "Taklif qilganga bonus ($)" }) };
       var card = h("div", { class: "glass", style: "padding:14px;margin-bottom:14px;display:grid;gap:8px" }, h("b", null, "➕ Yangi vazifa"), f.kind, f.title, f.url, f.chat, f.reward, f.ref_bonus,
-        h("button", { class: "btn p", onclick: function () { var v = {}; for (var k in f) v[k] = f[k].value; api("admin/task/save", v).then(reload).then(function () { toast("Qo‘shildi ✓"); }).catch(function (e) { toast(e.message); }); } }, "Qo‘shish"),
+        h("button", { class: "btn p", onclick: function () { var v = {}; for (var k in f) v[k] = f[k].value; v.reward = units(v.reward); v.ref_bonus = units(v.ref_bonus); api("admin/task/save", v).then(reload).then(function () { toast("Qo‘shildi ✓"); }).catch(function (e) { toast(e.message); }); } }, "Qo‘shish"),
         h("div", { class: "note", style: "margin:0" }, "Telegram vazifasi: botni o‘sha kanal/guruhga admin qiling — bot obunani o‘zi tekshiradi. YouTube/Instagram: bot faqat havola ochilganini bila oladi (obunani tekshira olmaydi)."));
       body.appendChild(card);
       d.tasks.forEach(function (t) {
-        body.appendChild(h("div", { class: "glass task" }, h("div", { class: "ic" }, KIND_IC[t.kind] || "🔗"), h("div", { class: "tx" }, h("b", null, t.title + (t.active ? "" : " (o‘chiq)")), h("small", null, "Unga +" + fmt(t.reward) + " · taklif qilganga +" + fmt(t.ref_bonus))),
+        body.appendChild(h("div", { class: "glass task" }, h("div", { class: "ic" }, KIND_IC[t.kind] || "🔗"), h("div", { class: "tx" }, h("b", null, t.title + (t.active ? "" : " (o‘chiq)")), h("small", null, "Unga +" + usd(t.reward) + " $ · taklif qilganga +" + usd(t.ref_bonus) + " $")),
           h("div", { style: "display:flex;gap:6px" },
             h("button", { class: "btn s", onclick: function () { api("admin/task/save", Object.assign({}, t, { active: !t.active })).then(reload).catch(function (e) { toast(e.message); }); } }, t.active ? "O‘chirish" : "Yoqish"),
             h("button", { class: "btn d s", onclick: function () { if (confirm("O‘chirilsinmi?")) api("admin/task/delete", { id: t.id }).then(reload); } }, "🗑"))));
@@ -1805,10 +1828,10 @@ sendUp({type:'ready'});
       var q = h("input", { class: "field", placeholder: "ID yoki @username" });
       body.appendChild(h("div", { class: "glass", style: "padding:14px;display:grid;gap:10px" }, q, h("button", { class: "btn p", onclick: function () { api("admin/user", { q: q.value }).then(function (d) { A.found = d.user; render(); }).catch(function (e) { A.found = null; toast(e.message); render(); }); } }, "Qidirish")));
       if (A.found) {
-        var u = A.found, amt = h("input", { class: "field", type: "number", placeholder: "Summa (manfiy — ayirish)" });
+        var u = A.found, amt = h("input", { class: "field", type: "number", placeholder: "Summa $ (manfiy — ayirish)" });
         body.appendChild(h("div", { class: "glass", style: "padding:14px;margin-top:12px;display:grid;gap:8px" },
-          h("b", null, (u.username ? "@" + u.username : u.first_name) + " · ID " + u.user_id), h("div", { class: "note", style: "margin:0" }, "Balans: " + fmt(u.balance) + " so‘m · o‘yin: " + mins(u.play_secs) + " · takliflar: " + u.referrals + (u.banned ? " · 🚫 bloklangan" : "")), amt,
-          h("button", { class: "btn p", onclick: function () { api("admin/adjust", { user_id: u.user_id, amount: amt.value }).then(function (r) { u.balance = r.balance; toast("Balans: " + fmt(r.balance)); render(); }).catch(function (e) { toast(e.message); }); } }, "Balansni o‘zgartirish"),
+          h("b", null, (u.username ? "@" + u.username : u.first_name) + " · ID " + u.user_id), h("div", { class: "note", style: "margin:0" }, "Balans: " + usd(u.balance) + " $ · o‘yin: " + mins(u.play_secs) + " · takliflar: " + u.referrals + (u.banned ? " · 🚫 bloklangan" : "")), amt,
+          h("button", { class: "btn p", onclick: function () { api("admin/adjust", { user_id: u.user_id, amount: units(amt.value) }).then(function (r) { u.balance = r.balance; toast("Balans: " + usd(r.balance) + " $"); render(); }).catch(function (e) { toast(e.message); }); } }, "Balansni o‘zgartirish"),
           h("button", { class: "btn " + (u.banned ? "" : "d"), onclick: function () { api("admin/ban", { user_id: u.user_id, banned: !u.banned }).then(function () { u.banned = u.banned ? 0 : 1; render(); }); } }, u.banned ? "Blokdan chiqarish" : "Bloklash")));
       }
     }
