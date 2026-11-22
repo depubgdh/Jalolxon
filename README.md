@@ -21,6 +21,10 @@
 - Do'st qo'shilsa va faol bo'lsa: admin belgilagan $ bonus. Vazifalar: bajargan va taklif qilgan odamga alohida bonus.
 - Yechib olish: so'rov adminga keladi; to'lovni admin o'zi amalga oshiradi. Rad etilsa balansga qaytadi.
 
+## Hexanaut va reklama
+- **Hexanaut** — 3-o'yin (Paper.io va Slither kabi). Admin → O'yinlar: «egallangan xaritaning har 1% uchun $» va «kesilgan raqib uchun $» ni belgilang.
+- **Reklama** (Admin → Reklama): 5 ta joy, har biriga rasm/GIF/MP4 (6 MB gacha) va havola. Reklama hamma o'yin ostida alohida chiziqda turadi; bossa shu havola ochiladi. Bir nechta bo'lsa 15 soniyada almashadi.
+
 ## YouTube video tizimi (alohida modul)
 Fayllar: `video.js` (mijoz moduli, YouTube IFrame API), `videos.py` (baza va tartib qoidasi), `api.py` oxiridagi `videos/next` va `admin/video/*` yo'llari. O'yin kodiga faqat `pause`/`resume` xabarlari qo'shilgan.
 - O'yin ekranining tepasida, pastida esa doim ko'rinadigan ovozsiz YouTube pleyer. **O'ynash** bosilganda 1-video ishga tushadi; pleyer haqiqatan PLAYING bo'lgach o'yin boshlanadi.

@@ -1,6 +1,7 @@
 """API yo'llari. Hammasi POST /api/<yo'l>, tanasida {init_data, ...}. Admin yo'llari faqat ADMIN_IDS uchun."""
 import asyncio
 import base64
+import re
 
 import auth
 import config
@@ -78,8 +79,9 @@ async def api_me(c, d):
     return {
         "user": {"id": uid, "name": u["first_name"], "username": u["username"], "photo": u["photo"], "balance": u["balance"]},
         "stats": db.stats(uid, _i(d.get("days"), 7)),
-        "settings": {k: st[k] for k in ("min_withdraw", "withdraw_on", "ref_join_bonus", "ref_active_bonus", "ref_active_minutes", "paper_pct", "paper_kill", "slither_pt", "slither_kill", "daily_cap", "tasks_on", "max_per_min")},
-        "cards": {g: (mm.get("card_" + g) or {}).get("ver", 0) for g in ("paperio", "slither")},
+        "settings": {k: st[k] for k in ("min_withdraw", "withdraw_on", "ref_join_bonus", "ref_active_bonus", "ref_active_minutes", "paper_pct", "paper_kill", "slither_pt", "slither_kill", "hex_pct", "hex_kill", "daily_cap", "tasks_on", "max_per_min")},
+        "cards": {g: (mm.get("card_" + g) or {}).get("ver", 0) for g in ("paperio", "slither", "hexanaut")},
+        "ads": _ads_public(),
         "is_admin": c["is_admin"], "play_secs": u["play_secs"],
     }
 
@@ -226,11 +228,64 @@ async def api_a_media_save(c, d):
         raw = base64.b64decode(str(d.get("data", "")), validate=False)
     except Exception:
         raise ApiError(400, "bad_file", "Fayl o‘qilmadi")
-    mime = _sniff(raw, allow_video=(key == "start"))
+    mime = _sniff(raw, allow_video=(key == "start" or key.startswith("ad_")))
     if not mime:
         raise ApiError(400, "bad_type", "Faqat JPG, PNG, WEBP yoki GIF" + (" (yoki MP4)" if key == "start" else "") + " yuklang")
     db.media_save(key, mime, raw)
     return await api_a_content(c, d)
+
+
+def _ad_slots() -> list:
+    mm = db.media_meta()
+    out = []
+    for i in range(1, db.AD_SLOTS + 1):
+        m = mm.get(f"ad_{i}")
+        out.append({"slot": i, "key": f"ad_{i}", "ver": m["ver"] if m else 0, "mime": m["mime"] if m else "", "size": m["size"] if m else 0,
+                    "url": db.get_text(f"ad_url_{i}", "")})
+    return out
+
+
+def _ads_public() -> list:
+    """O'yin ostida ko'rsatiladigan reklamalar (fayli bor joylar)."""
+    return [{"k": a["key"], "v": a["ver"], "m": a["mime"], "u": a["url"]} for a in _ad_slots() if a["ver"]]
+
+
+@route("admin/ads", admin=True)
+async def api_a_ads(c, d):
+    return {"ads": _ad_slots()}
+
+
+@route("admin/ad/save", admin=True)
+async def api_a_ad_save(c, d):
+    slot = _i(d.get("slot"))
+    if not 1 <= slot <= db.AD_SLOTS:
+        raise ApiError(400, "bad_slot", "Noto‘g‘ri reklama joyi")
+    url = str(d.get("url", "")).strip()[:500]
+    if url and not re.match(r"^(https?://|tg://)", url, re.I):
+        raise ApiError(400, "bad_url", "Havola https:// bilan boshlansin")
+    if d.get("data"):
+        try:
+            raw = base64.b64decode(str(d.get("data", "")), validate=False)
+        except Exception:
+            raise ApiError(400, "bad_file", "Fayl o‘qilmadi")
+        mime = _sniff(raw, allow_video=True)
+        if not mime:
+            raise ApiError(400, "bad_type", "Faqat JPG, PNG, WEBP, GIF yoki MP4 yuklang")
+        db.media_save(f"ad_{slot}", mime, raw)
+    elif not db.media_get(f"ad_{slot}"):
+        raise ApiError(400, "no_file", "Avval rasm, GIF yoki video tanlang")
+    db.set_text(f"ad_url_{slot}", url)
+    return {"ads": _ad_slots()}
+
+
+@route("admin/ad/delete", admin=True)
+async def api_a_ad_del(c, d):
+    slot = _i(d.get("slot"))
+    if not 1 <= slot <= db.AD_SLOTS:
+        raise ApiError(400, "bad_slot", "Noto‘g‘ri reklama joyi")
+    db.media_delete(f"ad_{slot}")
+    db.set_text(f"ad_url_{slot}", "")
+    return {"ads": _ad_slots()}
 
 
 @route("admin/media/delete", admin=True)

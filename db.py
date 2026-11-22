@@ -18,6 +18,8 @@ DEFAULTS = {
     "paper_kill": 500,           # Paper.io: har bir o'ldirilgan raqib uchun (500 = 0.0500 $)
     "slither_pt": 100,           # Slither: 1.00 ochko uchun (boshlang'ich 1.00 hisoblanmaydi)
     "slither_kill": 500,         # Slither: har bir o'ldirilgan ilon uchun
+    "hex_pct": 100,              # Hexanaut: egallangan xaritaning har 1% uchun
+    "hex_kill": 500,             # Hexanaut: har bir kesilgan raqib uchun
     "max_per_min": 1500,         # himoya: bir daqiqada olish mumkin bo'lgan eng ko'p miqdor
     "daily_cap": 30000,          # bir kunda o'yindan olinadigan eng ko'p miqdor
     "max_session_min": 20,       # bir o'yin seansida hisoblanadigan eng ko'p daqiqa
@@ -28,8 +30,10 @@ DEFAULTS = {
     "link_wait_sec": 8,          # YouTube/Instagram havolasi ochilgach tekshirishgacha kutish
 }
 START_TEXT_DEFAULT = "Salom, {name}! 🎮 Paper.io va Slither o‘yinlarini tekin o‘ynang, o‘yinda yig‘gan $ larni yechib oling va do‘stlaringizni taklif qiling."
-MEDIA_KEYS = ("card_paperio", "card_slither", "start")     # admin yuklaydigan rasm/GIF'lar
+AD_SLOTS = 5                    # reklama joylari soni (o'yin ostida navbat bilan ko'rsatiladi)
+MEDIA_KEYS = ("card_paperio", "card_slither", "card_hexanaut", "start") + tuple(f"ad_{i}" for i in range(1, AD_SLOTS + 1))     # admin yuklaydigan rasm/GIF/video
 MEDIA_MAX_BYTES = 2_500_000
+AD_MAX_BYTES = 6_000_000
 KINDS_BONUS = ("ref_join", "ref_active", "ref_task")
 KINDS_FRIENDS = KINDS_BONUS
 MAX_SECS_PING_GAP = 90          # ping shu vaqtdan ko'p uzilsa — oradagi vaqt hisoblanmaydi
@@ -183,8 +187,9 @@ def media_get(key: str):
 def media_save(key: str, mime: str, data: bytes) -> int:
     if key not in MEDIA_KEYS:
         raise DbError("bad_key", "Noto‘g‘ri kalit")
-    if len(data) > MEDIA_MAX_BYTES:
-        raise DbError("big", "Fayl juda katta (eng ko‘pi 2.5 MB)")
+    lim = AD_MAX_BYTES if key.startswith("ad_") else MEDIA_MAX_BYTES
+    if len(data) > lim:
+        raise DbError("big", f"Fayl juda katta (eng ko‘pi {lim / 1e6:.1f} MB)")
 
     def run(con):
         r = con.execute("SELECT ver FROM media WHERE key=?", (key,)).fetchone()
@@ -279,15 +284,16 @@ def _clamp(v, lo, hi):
 
 def calc_coins(game: str, res, secs: int, st: dict) -> int:
     """O'yin natijasidan coin hisoblaydi.
-    Paper.io: peak = eng ko'p egallangan hudud (promille, 0..1000), kills = o'ldirilgan raqiblar.
+    Paper.io va Hexanaut: peak = eng ko'p egallangan hudud (promille, 0..1000), kills = o'ldirilgan raqiblar.
     Slither: score = eng yuqori ochko × 10 (boshlang'ich 1.00 = 10 hisoblanmaydi), kills = o'ldirilgan ilonlar.
     Natija mijozdan keladi, shuning uchun vaqt bo'yicha (daqiqasiga eng ko'p coin) cheklanadi."""
     if not isinstance(res, dict):
         return 0
-    if game == "paperio":
+    if game in ("paperio", "hexanaut"):
         peak = _clamp(_int(res.get("peak")), 0, 1000)
         kills = _clamp(_int(res.get("kills")), 0, 100)
-        coins = peak * st["paper_pct"] // 10 + kills * st["paper_kill"]
+        pk = "paper" if game == "paperio" else "hex"
+        coins = peak * st[pk + "_pct"] // 10 + kills * st[pk + "_kill"]
     else:
         score10 = _clamp(_int(res.get("score")), 0, 1_000_000)
         kills = _clamp(_int(res.get("kills")), 0, 100)
@@ -341,7 +347,7 @@ def _settle(con, sess, st, end_ts: float, res=None):
 
 
 def game_start(uid: int, game: str) -> int:
-    if game not in ("paperio", "slither"):
+    if game not in ("paperio", "slither", "hexanaut"):
         raise DbError("bad_game", "Noma’lum o‘yin")
     st = get_settings()
 
