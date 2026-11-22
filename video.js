@@ -29,6 +29,8 @@
   var CSS = ".bv-wrap{flex:none;position:relative;z-index:3;background:#05070d;border-top:2px solid rgba(255,255,255,.12);padding-bottom:env(safe-area-inset-bottom,0px)}" +
     ".bv-cap{display:flex;align-items:center;gap:8px;padding:6px 12px;font:700 12px/1.2 system-ui,-apple-system,sans-serif;color:#bfeee2;white-space:nowrap;overflow:hidden}" +
     ".bv-cap .t{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}" +
+    ".bv-snd{flex:none;border:0;border-radius:12px;padding:7px 11px;background:#ff8a1f;color:#fff;font:800 12px system-ui,sans-serif;cursor:pointer;box-shadow:0 3px 0 #c4600a}" +
+    ".bv-snd.on{background:#2fbf71;box-shadow:0 3px 0 #1c8a4e}" +
     ".bv-up{flex:none;border:0;border-radius:12px;padding:6px 10px;background:rgba(255,255,255,.14);color:#fff;font:800 12px system-ui,sans-serif;cursor:pointer}" +
     ".bv-down{position:absolute;left:50%;bottom:calc(6px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;border:0;border-radius:14px;padding:6px 12px;background:rgba(10,14,30,.55);color:#fff;font:800 12px system-ui,sans-serif;cursor:pointer;backdrop-filter:blur(4px)}" +
     ".bv-player{position:relative;width:100%;height:clamp(200px,56.25vw,36vh);background:#000}" +
@@ -101,8 +103,8 @@
     /* --- ko'rinish --- */
     var wrap = mk("div", "bv-wrap"), cap = mk("div", "bv-cap"), capT = mk("span", "t", "Video yuklanmoqda…");
     var box = mk("div", "bv-player");
-    var up = mk("button", "bv-up", "⬆ O‘yin");
-    cap.appendChild(mk("span", "d", "🎵")); cap.appendChild(capT); cap.appendChild(up);
+    var up = mk("button", "bv-up", "⬆ O‘yin"), snd = mk("button", "bv-snd", "🔇 Ovozni yoqish");
+    cap.appendChild(mk("span", "d", "🎵")); cap.appendChild(capT); cap.appendChild(snd); cap.appendChild(up);
     wrap.appendChild(cap); wrap.appendChild(box);
     opts.mount.appendChild(wrap);
     /* o'yin butun ekranni egallaydi, video ekran tagida: pastga surish yoki tugma bilan o'tiladi */
@@ -118,6 +120,18 @@
     btn.onclick = resume;
 
     function setTitle(t) { capT.textContent = t || "Video"; }
+
+    /* --- ovoz: boshida ovozsiz; foydalanuvchi tugma bilan yoqadi/o'chiradi (keyingi videolarda ham saqlanadi) --- */
+    var wantSound = false;
+    function updSnd() {
+      snd.textContent = wantSound ? "🔊 Ovozni o‘chirish" : "🔇 Ovozni yoqish";
+      snd.className = "bv-snd" + (wantSound ? " on" : "");
+    }
+    function applySound() {
+      try { if (P) { if (wantSound) { P.unMute(); P.setVolume(100); } else P.mute(); } } catch (e) {}
+      updSnd();
+    }
+    snd.onclick = function () { wantSound = !wantSound; applySound(); };
     function showEmpty() {
       if (box.querySelector(".bv-empty")) return;
       box.appendChild(mk("div", "bv-empty", "Hozircha video qo‘yilmagan"));
@@ -142,7 +156,7 @@
               onReady: function () {
                 done = true; clearTimeout(t);
                 if (destroyed) { try { pl.destroy(); } catch (e) {} return bad(new Error("destroyed")); }
-                P = pl; try { pl.mute(); } catch (e) {} ok();
+                P = pl; applySound(); ok();
               },
               onStateChange: onState,
               onError: onErr
@@ -158,7 +172,7 @@
       var em = box.querySelector(".bv-empty"); if (em) em.remove();
       setTitle(v.title);
       loadAt = stateSince = Date.now();
-      try { P.mute(); P.loadVideoById({ videoId: v.vid, startSeconds: 0 }); P.mute(); } catch (e) {}
+      try { applySound(); P.loadVideoById({ videoId: v.vid, startSeconds: 0 }); applySound(); } catch (e) {}
     }
 
     function waitPlaying(ms) {
@@ -189,7 +203,7 @@
       var s = e.data;
       if (s === 1) {
         skips = 0;
-        try { if (P && !P.isMuted()) P.mute(); } catch (x) {}
+        try { if (P && !wantSound && !P.isMuted()) P.mute(); } catch (x) {}      // foydalanuvchi ovozni yoqmagan bo'lsa — doim ovozsiz
         settle(true);
         prefetch();
       } else if (s === 0) {
@@ -260,7 +274,7 @@
     function resume() {
       if (resuming || destroyed) return;
       resuming = true; btn.disabled = true; btn.textContent = "Tekshirilmoqda…";
-      try { if (P) { P.mute(); P.playVideo(); } } catch (e) {}     // foydalanuvchi bosishi ichida ijroni "uyg'otamiz"
+      try { if (P) { applySound(); P.playVideo(); } } catch (e) {}     // foydalanuvchi bosishi ichida ijroni "uyg'otamiz"
       netOk().then(function (ok) { if (!ok) throw new Error("offline"); return restart(); })
         .then(function () { if (!destroyed) recover(); },
           function () { if (!destroyed) { msgEl.textContent = MSG; } })
@@ -314,7 +328,7 @@
       return ensurePlayer(v.vid);
     }).catch(function () {});
 
-    return { start: start, ensure: ensure, resume: resume, destroy: destroy, state: function () { return status; } };
+    return { start: start, ensure: ensure, resume: resume, destroy: destroy, state: function () { return status; }, sound: function () { return wantSound; } };
   }
 
   window.BullVideo = { create: create };

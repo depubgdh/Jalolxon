@@ -4,6 +4,7 @@ Pul birligi — butun so'm. Balans faqat shu yerdagi funksiyalar orqali, bitta t
 O'yindan daromad — o'yinda yig'ilgan coinga qarab (Paper.io: egallangan hudud foizi va o'ldirilganlar; Slither: yeyilgan coinlar).
 Mijoz yuborgan natija server tomonida vaqt bo'yicha (daqiqasiga eng ko'p coin) va kunlik chegara bilan cheklanadi.
 """
+import json
 import sqlite3
 import time
 from datetime import datetime, timedelta
@@ -111,6 +112,8 @@ def init_db():
         cols = [r["name"] for r in con.execute(f"PRAGMA table_info({tbl})")]
         if "coins" not in cols:
             con.execute(f"ALTER TABLE {tbl} ADD COLUMN coins INTEGER NOT NULL DEFAULT 0")
+    if "res" not in [r["name"] for r in con.execute("PRAGMA table_info(sessions)")]:     # o'yinning oxirgi ma'lum natijasi (chiqib ketilsa ham coin berish uchun)
+        con.execute("ALTER TABLE sessions ADD COLUMN res TEXT NOT NULL DEFAULT ''")
     con.close()
 
 
@@ -285,11 +288,28 @@ def calc_coins(game: str, res, secs: int, st: dict) -> int:
     return max(0, min(coins, secs * st["max_coins_per_min"] // 60))
 
 
+def _load_res(raw):
+    try:
+        v = json.loads(raw or "")
+        return v if isinstance(v, dict) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _clean_res(res):
+    """Mijozdan kelgan natijadan faqat sonlarni qoldiradi (bazaga ortiqcha narsa yozilmasin)."""
+    if not isinstance(res, dict):
+        return ""
+    return json.dumps({k: _int(res.get(k)) for k in ("peak", "kills", "score") if res.get(k) is not None})
+
+
 def _settle(con, sess, st, end_ts: float, res=None):
     """Seansni yopadi. Vaqt serverdagi soat bo'yicha; coin — o'yin natijasidan (res), so'm = coin × kurs, kunlik chegara bilan."""
     secs = int(max(0, min(end_ts, now()) - sess["started"]))
     secs = min(secs, st["max_session_min"] * 60)
     uid = sess["user_id"]
+    if not isinstance(res, dict):            # natija berilmagan (Telegram «orqaga», ilova yopilgan): oxirgi ping bilan kelgan natija
+        res = _load_res(sess["res"] if "res" in sess.keys() else "")
     day = today()
     d = con.execute("SELECT earned FROM daily WHERE user_id=? AND day=?", (uid, day)).fetchone()
     got = d["earned"] if d else 0
@@ -330,10 +350,14 @@ def game_start(uid: int, game: str) -> int:
     return _tx(run)
 
 
-def game_ping(uid: int, sid: int) -> bool:
+def game_ping(uid: int, sid: int, res=None) -> bool:
     con = connect()
     try:
-        con.execute("UPDATE sessions SET last_ping=? WHERE id=? AND user_id=? AND status='active'", (now(), sid, uid))
+        raw = _clean_res(res)
+        if raw:
+            con.execute("UPDATE sessions SET last_ping=?, res=? WHERE id=? AND user_id=? AND status='active'", (now(), raw, sid, uid))
+        else:
+            con.execute("UPDATE sessions SET last_ping=? WHERE id=? AND user_id=? AND status='active'", (now(), sid, uid))
         return True
     finally:
         con.close()

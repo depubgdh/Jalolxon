@@ -78,7 +78,7 @@ async def api_me(c, d):
     return {
         "user": {"id": uid, "name": u["first_name"], "username": u["username"], "photo": u["photo"], "balance": u["balance"]},
         "stats": db.stats(uid, _i(d.get("days"), 7)),
-        "settings": {k: st[k] for k in ("min_withdraw", "withdraw_on", "ref_join_bonus", "ref_active_bonus", "ref_active_minutes", "som_per_100_coins", "paper_coin_per_percent", "paper_coin_per_kill", "slither_coin_per_point", "daily_cap", "tasks_on")},
+        "settings": {k: st[k] for k in ("min_withdraw", "withdraw_on", "ref_join_bonus", "ref_active_bonus", "ref_active_minutes", "som_per_100_coins", "paper_coin_per_percent", "paper_coin_per_kill", "slither_coin_per_point", "daily_cap", "tasks_on", "max_coins_per_min")},
         "cards": {g: (mm.get("card_" + g) or {}).get("ver", 0) for g in ("paperio", "slither")},
         "is_admin": c["is_admin"], "play_secs": u["play_secs"],
     }
@@ -96,7 +96,7 @@ async def api_game_start(c, d):
 
 @route("game/ping")
 async def api_game_ping(c, d):
-    return {"ok": db.game_ping(c["uid"], _i(d.get("sid")))}
+    return {"ok": db.game_ping(c["uid"], _i(d.get("sid")), d.get("result") if isinstance(d.get("result"), dict) else None)}
 
 
 @route("game/finish")
